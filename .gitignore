@@ -22,3 +22,12 @@
 ###< friendsofphp/php-cs-fixer ###
 
 /.phpstan-cache/
+
+###> symfony/asset-mapper ###
+/public/assets/
+/assets/vendor/
+###< symfony/asset-mapper ###
+
+###> phpstan/phpstan ###
+phpstan.neon
+###< phpstan/phpstan ###
