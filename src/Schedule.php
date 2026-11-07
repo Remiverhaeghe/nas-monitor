@@ -3,6 +3,8 @@
 namespace App;
 
 use App\Scheduler\CheckMonitorsMessage;
+use App\Scheduler\ExternalHeartbeatMessage;
+use App\Scheduler\PurgePingsMessage;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
 use Symfony\Component\Scheduler\Schedule as SymfonySchedule;
@@ -23,6 +25,8 @@ class Schedule implements ScheduleProviderInterface
             ->stateful($this->cache) // ensure missed tasks are executed
             ->processOnlyLastMissedRun(true) // ensure only last missed task is run
             ->add(RecurringMessage::every('1 minute', new CheckMonitorsMessage()))
+            ->add(RecurringMessage::every('5 minutes', new ExternalHeartbeatMessage()))
+            ->add(RecurringMessage::every('1 day', new PurgePingsMessage(), from: '03:30'))
         ;
     }
 }

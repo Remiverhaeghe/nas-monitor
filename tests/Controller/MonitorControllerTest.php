@@ -56,6 +56,40 @@ class MonitorControllerTest extends WebTestCase
         self::assertSelectorNotExists('.token');
     }
 
+    public function testCreateHttpMonitorHasNoToken(): void
+    {
+        $vCrawler = $this->aClient->request('GET', '/monitors/new');
+        $this->aClient->submit($vCrawler->selectButton('Enregistrer')->form([
+            'monitor_form[name]' => 'Site du NAS',
+            'monitor_form[type]' => 'http',
+            'monitor_form[target]' => 'https://nas.local',
+            'monitor_form[notificationChannel]' => 'all',
+        ]));
+
+        self::assertResponseRedirects();
+        $this->aClient->followRedirect();
+        self::assertSelectorNotExists('.token');
+        self::assertSelectorNotExists('button:contains("Régénérer le jeton")');
+
+        $vMonitor = $this->findMonitorByName('Site du NAS');
+        self::assertSame(MonitorType::Http, $vMonitor->getType());
+        self::assertSame('https://nas.local', $vMonitor->getTarget());
+        self::assertFalse($vMonitor->hasPingToken());
+    }
+
+    public function testHttpMonitorRequiresUrl(): void
+    {
+        $vCrawler = $this->aClient->request('GET', '/monitors/new');
+        $this->aClient->submit($vCrawler->selectButton('Enregistrer')->form([
+            'monitor_form[name]' => 'Site du NAS',
+            'monitor_form[type]' => 'http',
+            'monitor_form[target]' => 'nas.local',
+        ]));
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('form', 'URL attendue');
+    }
+
     public function testInvalidFormIsRejected(): void
     {
         $vCrawler = $this->aClient->request('GET', '/monitors/new');

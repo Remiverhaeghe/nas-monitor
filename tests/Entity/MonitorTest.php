@@ -121,6 +121,24 @@ class MonitorTest extends TestCase
         self::assertSame(hash('sha256', $vSecondToken), Monitor::hashToken($vSecondToken));
     }
 
+    public function testActiveCheckIsDueAfterInterval(): void
+    {
+        $vMonitor = new Monitor('Site', MonitorType::Http, self::INTERVAL, self::GRACE, $this->aNow);
+
+        self::assertTrue($vMonitor->isCheckDue($this->aNow));
+        $vMonitor->recordPing(PingKind::Success, $this->aNow);
+        self::assertFalse($vMonitor->isCheckDue($this->aNow->modify('+'.(self::INTERVAL - 1).' seconds')));
+        self::assertTrue($vMonitor->isCheckDue($this->aNow->modify('+'.self::INTERVAL.' seconds')));
+
+        $vMonitor->pause();
+        self::assertFalse($vMonitor->isCheckDue($this->aNow->modify('+1 day')));
+    }
+
+    public function testHeartbeatIsNeverCheckedActively(): void
+    {
+        self::assertFalse($this->createMonitor()->isCheckDue($this->aNow->modify('+1 day')));
+    }
+
     private function createMonitor(): Monitor
     {
         $rMonitor = new Monitor('Sauvegarde restic', MonitorType::Heartbeat, self::INTERVAL, self::GRACE, $this->aNow);

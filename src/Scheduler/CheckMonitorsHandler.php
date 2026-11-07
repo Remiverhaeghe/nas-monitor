@@ -2,31 +2,46 @@
 
 namespace App\Scheduler;
 
+use App\Check\ActiveCheckRunner;
 use App\Service\MonitorChecker;
+use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
+/**
+ * Les contrôles actifs passent avant la vérification des délais pour qu'un contrôle tout juste dû
+ * ne fasse pas passer le moniteur en retard. Les erreurs sont journalisées sans être relancées
+ * pour que la minute suivante ait lieu.
+ */
 #[AsMessageHandler]
 final class CheckMonitorsHandler
 {
     public function __construct(
+        private readonly ActiveCheckRunner $aActiveCheckRunner,
         private readonly MonitorChecker $aMonitorChecker,
+        private readonly ManagerRegistry $aManagerRegistry,
         private readonly LoggerInterface $aLogger,
     ) {
     }
 
-    /**
-     * L'erreur est journalisée sans être relancée pour que la vérification suivante ait lieu.
-     */
     public function __invoke(CheckMonitorsMessage $pMessage): void
     {
+        $this->run('contrôles actifs', fn () => $this->aActiveCheckRunner->runDueChecks());
+        $this->run('vérification des délais', fn () => $this->aMonitorChecker->check());
+    }
+
+    private function run(string $pLabel, callable $pTask): void
+    {
         try {
-            $this->aMonitorChecker->check();
+            $pTask();
         } catch (\Throwable $vException) {
-            $this->aLogger->error('Échec de la vérification des moniteurs : {message}', [
+            $this->aLogger->error('Échec de l\'étape {step} : {message}', [
+                'step' => $pLabel,
                 'message' => $vException->getMessage(),
                 'exception' => $vException,
             ]);
+            // Après un conflit de version, l'EntityManager est fermé : il faut le recréer
+            $this->aManagerRegistry->resetManager();
         }
     }
 }

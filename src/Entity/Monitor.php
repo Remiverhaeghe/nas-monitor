@@ -4,8 +4,10 @@ namespace App\Entity;
 
 use App\Enum\MonitorStatus;
 use App\Enum\MonitorType;
+use App\Enum\NotificationChannel;
 use App\Enum\PingKind;
 use App\Repository\MonitorRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -52,8 +54,18 @@ class Monitor
     #[ORM\Column(length: 16, nullable: true, enumType: PingKind::class)]
     private ?PingKind $lastPingKind = null;
 
+    #[ORM\Column(length: 16, enumType: NotificationChannel::class, options: ['default' => 'email'])]
+    private NotificationChannel $notificationChannel = NotificationChannel::Email;
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
+
+    /**
+     * Évite qu'un ping et la vérification planifiée écrasent mutuellement leurs modifications.
+     */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
 
     public function __construct(
         string $pName,
@@ -135,6 +147,23 @@ class Monitor
         };
 
         return $rStatus;
+    }
+
+    /**
+     * Pour un contrôle actif : vrai si l'intervalle est écoulé depuis le dernier contrôle.
+     */
+    public function isCheckDue(\DateTimeImmutable $pNow): bool
+    {
+        if ($this->paused || !$this->type->isActive()) {
+            return false;
+        }
+        if (null === $this->lastPingAt) {
+            return true;
+        }
+
+        $rDue = $pNow->getTimestamp() - $this->lastPingAt->getTimestamp() >= $this->expectedIntervalSeconds;
+
+        return $rDue;
     }
 
     public function pause(): void
@@ -227,5 +256,20 @@ class Monitor
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getNotificationChannel(): NotificationChannel
+    {
+        return $this->notificationChannel;
+    }
+
+    public function setNotificationChannel(NotificationChannel $pNotificationChannel): void
+    {
+        $this->notificationChannel = $pNotificationChannel;
+    }
+
+    public function hasPingToken(): bool
+    {
+        return null !== $this->pingTokenHash;
     }
 }

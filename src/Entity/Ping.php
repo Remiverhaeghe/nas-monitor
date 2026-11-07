@@ -9,6 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PingRepository::class)]
 #[ORM\Index(name: 'idx_ping_monitor_received', columns: ['monitor_id', 'received_at'])]
+#[ORM\Index(name: 'idx_ping_received', columns: ['received_at'])]
 class Ping
 {
     public const MESSAGE_MAX_LENGTH = 500;

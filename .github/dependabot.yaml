@@ -9,6 +9,24 @@ updates:
     cooldown:
       default-days: 7
 
+  - package-ecosystem: docker
+    directory: /simulation
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore"
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore"
+    cooldown:
+      default-days: 7
+
   - package-ecosystem: composer
     directory: /
     schedule:
