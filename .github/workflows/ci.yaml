@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   tests:
-    name: Tests
+    name: Tests et qualité
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -41,44 +41,26 @@ jobs:
             *.cache-to=type=gha,scope=${{github.ref}},mode=max
       - name: Start services
         run: docker compose up --wait --no-build
-      - name: Check HTTP reachability
-        run: curl -v --fail-with-body http://localhost
-      # Uncomment when the homepage is configured, or change the path to check
-      # - name: Check HTTPS reachability
-      #   run: curl -v --insecure --fail-with-body https://localhost
-      - name: Check Mercure reachability
-        run: curl -vI --insecure --fail-with-body https://localhost/.well-known/mercure?match=test
-      # Uncomment if Doctrine ORM is installed
-      # - name: Create test database
-      #   run: docker compose exec -T php bin/console -e test doctrine:database:create
-      # Uncomment if Doctrine Migrations is installed
-      # - name: Run migrations
-      #   run: docker compose exec -T php bin/console -e test doctrine:migrations:migrate --no-interaction
-      # Uncomment if PHPUnit is installed
-      # - name: Run PHPUnit
-      #   run: docker compose exec -T php bin/phpunit
-      # Uncomment if Doctrine ORM is installed
-      # - name: Doctrine Schema Validator
-      #   run: docker compose exec -T php bin/console -e test doctrine:schema:validate
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-      statuses: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Lint Code Base
-        uses: super-linter/super-linter/slim@v9
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_CHECKOV: false
-          VALIDATE_TRIVY: false
-          VALIDATE_BIOME_FORMAT: false
-          VALIDATE_BIOME_LINT: false
-          VALIDATE_PYTHON_BLACK: false
+      - name: Check HTTPS reachability
+        run: curl -v --insecure --fail-with-body https://localhost/login
+      - name: Security audit of dependencies
+        run: docker compose exec -T php composer audit
+      - name: Lint Twig, YAML and container
+        run: |
+          docker compose exec -T php bin/console lint:twig templates
+          docker compose exec -T php bin/console lint:yaml config --parse-tags
+          docker compose exec -T php bin/console lint:container
+      - name: PHP-CS-Fixer
+        run: docker compose exec -T php vendor/bin/php-cs-fixer fix --dry-run --diff
+      - name: PHPStan
+        run: |
+          docker compose exec -T php bin/console cache:warmup --env=dev
+          docker compose exec -T php vendor/bin/phpstan analyse --no-progress
+      - name: Create test database
+        run: docker compose exec -T php bin/console -e test doctrine:database:create
+      - name: Run migrations
+        run: docker compose exec -T php bin/console -e test doctrine:migrations:migrate --no-interaction
+      - name: Doctrine Schema Validator
+        run: docker compose exec -T php bin/console -e test doctrine:schema:validate
+      - name: Run PHPUnit
+        run: docker compose exec -T php bin/phpunit
