@@ -15,6 +15,7 @@ final class PingRecorder
     public function __construct(
         private readonly EntityManagerInterface $aEntityManager,
         private readonly ClockInterface $aClock,
+        private readonly IncidentManager $aIncidentManager,
         private readonly LoggerInterface $aLogger,
     ) {
     }
@@ -34,9 +35,7 @@ final class PingRecorder
             $pSourceIp,
         );
         $vChanged = $pMonitor->recordPing($pKind, $vNow);
-
         $this->aEntityManager->persist($rPing);
-        $this->aEntityManager->flush();
 
         $this->aLogger->info('Ping {kind} reçu pour le moniteur {monitor}', [
             'kind' => $pKind->value,
@@ -48,7 +47,10 @@ final class PingRecorder
                 'previous' => $vPreviousStatus->value,
                 'status' => $pMonitor->getStatus()->value,
             ]);
+            $this->aIncidentManager->handleStatusChange($pMonitor, $vNow);
         }
+
+        $this->aEntityManager->flush();
 
         return $rPing;
     }

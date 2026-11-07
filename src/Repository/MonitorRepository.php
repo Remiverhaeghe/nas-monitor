@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Monitor;
+use App\Enum\MonitorStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -21,5 +22,22 @@ class MonitorRepository extends ServiceEntityRepository
         $rMonitor = $this->findOneBy(['pingTokenHash' => Monitor::hashToken($pToken)]);
 
         return $rMonitor;
+    }
+
+    /**
+     * Moniteurs dont le statut peut changer avec le temps, sans nouveau ping.
+     *
+     * @return list<Monitor>
+     */
+    public function findTimeSensitive(): array
+    {
+        $rMonitors = $this->createQueryBuilder('m')
+            ->where('m.paused = false')
+            ->andWhere('m.status IN (:statuses)')
+            ->setParameter('statuses', [MonitorStatus::Up->value, MonitorStatus::Late->value])
+            ->getQuery()
+            ->getResult();
+
+        return $rMonitors;
     }
 }
