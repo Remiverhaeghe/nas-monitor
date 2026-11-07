@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Dto\MonitorInput;
 use App\Entity\Monitor;
 use App\Enum\MonitorType;
+use App\Enum\NotificationChannel;
 use App\Form\MonitorFormType;
 use App\Service\IncidentManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -40,19 +41,24 @@ final class MonitorController extends AbstractController
         $vForm->handleRequest($pRequest);
 
         if ($vForm->isSubmitted() && $vForm->isValid()) {
+            $vType = $vInput->type ?? MonitorType::Heartbeat;
             $vMonitor = new Monitor(
                 (string) $vInput->name,
-                MonitorType::Heartbeat,
+                $vType,
                 (int) $vInput->intervalMinutes * 60,
                 (int) $vInput->graceMinutes * 60,
                 $this->aClock->now(),
             );
-            $vToken = $vMonitor->rotatePingToken();
+            $vMonitor->setTarget($this->normalizeTarget($vInput->target));
+            $vMonitor->setNotificationChannel($vInput->notificationChannel ?? NotificationChannel::Email);
+            $vToken = $vType->isActive() ? null : $vMonitor->rotatePingToken();
             $this->aEntityManager->persist($vMonitor);
             $this->aEntityManager->flush();
 
-            $this->aLogger->info('Moniteur {monitor} créé', ['monitor' => $vMonitor->getId()]);
-            $this->addFlash('ping_token', $vToken);
+            $this->aLogger->info('Moniteur {monitor} créé ({type})', ['monitor' => $vMonitor->getId(), 'type' => $vType->value]);
+            if (null !== $vToken) {
+                $this->addFlash('ping_token', $vToken);
+            }
 
             return $this->redirectToRoute('app_monitor_show', ['id' => $vMonitor->getId()]);
         }
@@ -69,12 +75,14 @@ final class MonitorController extends AbstractController
     public function edit(Request $pRequest, Monitor $pMonitor): Response
     {
         $vInput = MonitorInput::fromMonitor($pMonitor);
-        $vForm = $this->createForm(MonitorFormType::class, $vInput);
+        $vForm = $this->createForm(MonitorFormType::class, $vInput, ['is_edit' => true]);
         $vForm->handleRequest($pRequest);
 
         if ($vForm->isSubmitted() && $vForm->isValid()) {
             $vNow = $this->aClock->now();
             $pMonitor->setName((string) $vInput->name);
+            $pMonitor->setTarget($this->normalizeTarget($vInput->target));
+            $pMonitor->setNotificationChannel($vInput->notificationChannel ?? NotificationChannel::Email);
             $pMonitor->setExpectedIntervalSeconds((int) $vInput->intervalMinutes * 60);
             $pMonitor->setGraceSeconds((int) $vInput->graceMinutes * 60);
             if ($pMonitor->refreshStatus($vNow)) {
@@ -128,6 +136,10 @@ final class MonitorController extends AbstractController
     #[IsCsrfTokenValid(self::CSRF_TOKEN_ID)]
     public function rotateToken(Monitor $pMonitor): Response
     {
+        if ($pMonitor->getType()->isActive()) {
+            throw $this->createNotFoundException('Un contrôle actif n\'a pas de jeton de ping.');
+        }
+
         $vToken = $pMonitor->rotatePingToken();
         $this->aEntityManager->flush();
 
@@ -150,5 +162,13 @@ final class MonitorController extends AbstractController
         $this->addFlash('success', \sprintf('Moniteur « %s » supprimé.', $vName));
 
         return $this->redirectToRoute('app_dashboard');
+    }
+
+    private function normalizeTarget(?string $pTarget): ?string
+    {
+        $vTarget = trim((string) $pTarget);
+        $rTarget = '' === $vTarget ? null : $vTarget;
+
+        return $rTarget;
     }
 }

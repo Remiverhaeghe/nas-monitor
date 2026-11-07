@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Chart\TrendChartFactory;
 use App\Entity\Monitor;
 use App\Enum\MonitorStatus;
 use App\Repository\IncidentRepository;
@@ -20,6 +21,7 @@ final class DashboardController extends AbstractController
         private readonly MonitorRepository $aMonitorRepository,
         private readonly IncidentRepository $aIncidentRepository,
         private readonly PingRepository $aPingRepository,
+        private readonly TrendChartFactory $aTrendChartFactory,
     ) {
     }
 
@@ -50,8 +52,12 @@ final class DashboardController extends AbstractController
     #[Route('/monitors/{id}', name: 'app_monitor_show', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function show(Monitor $pMonitor): Response
     {
+        $vSuccesses = $this->aPingRepository->findRecentSuccessesForMonitor($pMonitor, self::PING_LIMIT);
+
         $rResponse = $this->render('monitor/show.html.twig', [
             'monitor' => $pMonitor,
+            'duration_chart' => $this->aTrendChartFactory->durations($vSuccesses),
+            'size_chart' => $this->aTrendChartFactory->sizes($vSuccesses),
             'pings' => $this->aPingRepository->findLatestForMonitor($pMonitor, self::PING_LIMIT),
             'incidents' => $this->aIncidentRepository->findLatestForMonitor($pMonitor, self::INCIDENT_LIMIT),
         ]);

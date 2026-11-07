@@ -2,6 +2,26 @@
 
 ## Non publié
 
+### Contrôles actifs et notifications
+- Moniteurs de type site web (HTTP), port TCP et certificat TLS, contrôlés par l'application
+- Notifications ntfy sur le téléphone, canal choisi par moniteur
+- Dates des alertes à l'heure de Paris
+- Courbes de durée et de taille sur la page d'un moniteur
+
+### API
+- API en lecture seule à jeton pour l'application mobile, commande de création de jeton
+
+### Fiabilité
+- Verrouillage optimiste sur les moniteurs, ping rejoué en cas de conflit
+- Signal toutes les 5 minutes vers un service extérieur, qui alerte si le NAS tombe
+- Suppression quotidienne des pings de plus de 90 jours
+
+### Sécurité
+- Politique CSP avec nonce et HSTS en production
+- Images Docker fixées par empreinte, suivies par Dependabot
+- Proxys de confiance configurables
+- Contrôle quotidien déclenché par le dépôt central de veille au lieu d'un planning propre
+
 ### Simulation du NAS et production
 - Service `worker` dans la configuration de production
 - En-têtes de sécurité ajoutés par Caddy en production

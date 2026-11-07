@@ -24,7 +24,9 @@
         {% else %}
             {{ include('monitor/_action.html.twig', {route: 'app_monitor_pause', label: 'Mettre en pause'}) }}
         {% endif %}
-        {{ include('monitor/_action.html.twig', {route: 'app_monitor_rotate_token', label: 'Régénérer le jeton', confirm: 'L\'ancien jeton cessera immédiatement de fonctionner. Continuer ?'}) }}
+        {% if not monitor.type.active %}
+            {{ include('monitor/_action.html.twig', {route: 'app_monitor_rotate_token', label: 'Régénérer le jeton', confirm: 'L\'ancien jeton cessera immédiatement de fonctionner. Continuer ?'}) }}
+        {% endif %}
         {{ include('monitor/_action.html.twig', {route: 'app_monitor_delete', label: 'Supprimer', danger: true, confirm: 'Le moniteur et tout son historique seront supprimés. Continuer ?'}) }}
     </div>
 
@@ -32,7 +34,7 @@
         <dt>Statut</dt>
         <dd>{{ include('_status.html.twig', {status: monitor.status}) }}</dd>
         <dt>Type</dt>
-        <dd>{{ monitor.type.value }}</dd>
+        <dd>{{ monitor.type.label }}</dd>
         {% if monitor.target %}
             <dt>Cible</dt>
             <dd>{{ monitor.target }}</dd>
@@ -41,11 +43,25 @@
         <dd>{{ (monitor.expectedIntervalSeconds / 60)|round }} min</dd>
         <dt>Délai de grâce</dt>
         <dd>{{ (monitor.graceSeconds / 60)|round }} min</dd>
-        <dt>Dernier ping</dt>
+        <dt>Dernier signal</dt>
         <dd>{{ monitor.lastPingAt ? monitor.lastPingAt|date : 'aucun' }}</dd>
+        <dt>Alertes</dt>
+        <dd>{{ monitor.notificationChannel.label }}</dd>
         <dt>Créé le</dt>
         <dd>{{ monitor.createdAt|date }}</dd>
     </dl>
+
+    {% if duration_chart or size_chart %}
+        <h2>Tendances</h2>
+        <div class="trends">
+            {% if duration_chart %}
+                {{ include('monitor/_trend.html.twig', {chart: duration_chart, title: 'Durée des exécutions réussies (s)'}) }}
+            {% endif %}
+            {% if size_chart %}
+                {{ include('monitor/_trend.html.twig', {chart: size_chart, title: 'Taille sauvegardée (Mo)'}) }}
+            {% endif %}
+        </div>
+    {% endif %}
 
     <h2>Incidents</h2>
     {% if incidents is empty %}

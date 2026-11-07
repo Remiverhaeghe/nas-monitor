@@ -7,6 +7,7 @@ use App\Entity\Monitor;
 use App\Enum\IncidentCause;
 use App\Enum\MonitorStatus;
 use App\Enum\PingKind;
+use App\Notification\AlertNotifier;
 use App\Repository\IncidentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -19,7 +20,7 @@ final class IncidentManager
     public function __construct(
         private readonly IncidentRepository $aIncidentRepository,
         private readonly EntityManagerInterface $aEntityManager,
-        private readonly AlertMailer $aAlertMailer,
+        private readonly AlertNotifier $aAlertNotifier,
         private readonly LoggerInterface $aLogger,
     ) {
     }
@@ -49,7 +50,7 @@ final class IncidentManager
             'monitor' => $pMonitor->getId(),
             'cause' => $vCause->value,
         ]);
-        $this->aAlertMailer->sendDown($vIncident);
+        $this->aAlertNotifier->sendDown($vIncident);
     }
 
     private function resolve(Incident $pIncident, MonitorStatus $pStatus, \DateTimeImmutable $pNow): void
@@ -61,7 +62,7 @@ final class IncidentManager
             'duration' => $pIncident->getDurationSeconds($pNow),
         ]);
         if (MonitorStatus::Up === $pStatus) {
-            $this->aAlertMailer->sendRecovered($pIncident, $pNow);
+            $this->aAlertNotifier->sendRecovered($pIncident, $pNow);
         }
     }
 }

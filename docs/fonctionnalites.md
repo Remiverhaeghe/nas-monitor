@@ -1,49 +1,69 @@
 # Fonctionnalités
 
-## Moniteur
+## Types de moniteurs
 
-Un moniteur représente une tâche planifiée (sauvegarde, synchronisation, script). Il est défini par :
+| Type | Fonctionnement | Cible |
+|---|---|---|
+| Tâche planifiée | La tâche envoie un ping à chaque exécution | aucune |
+| Site web (HTTP) | Requête `GET`, succès si le code est inférieur à 400 | URL complète |
+| Port TCP | Ouverture d'une connexion | `hôte:port` |
+| Certificat TLS | Vérification du certificat, échec s'il expire dans moins de `TLS_WARNING_DAYS` jours | `hôte:port` |
 
-- un nom
-- un intervalle attendu entre deux pings de succès
-- un délai de grâce toléré avant l'alerte
-- un jeton de ping, dont seule l'empreinte SHA-256 est conservée
+Pour une tâche planifiée, l'intervalle est la durée maximale entre deux pings de succès. Pour un contrôle actif, c'est la fréquence du contrôle. Chaque contrôle actif est enregistré comme un ping, avec sa durée et son résultat.
+
+Le jeton de ping n'existe que pour les tâches planifiées ; seule son empreinte SHA-256 est conservée.
 
 ## Statuts
 
 | Statut | Condition |
 |---|---|
-| Nouveau | Aucun ping reçu depuis la création ou la reprise |
-| Opérationnel | Dernier ping de succès dans l'intervalle attendu |
+| Nouveau | Aucun signal depuis la création ou la reprise |
+| Opérationnel | Dernier succès dans l'intervalle attendu |
 | En retard | Intervalle dépassé, délai de grâce en cours |
-| En panne | Délai de grâce dépassé, ou dernier ping en échec |
+| En panne | Délai de grâce dépassé, ou dernier signal en échec |
 | En pause | Surveillance suspendue |
 
 Un ping `start` est enregistré sans modifier le statut.
 
 ## Incidents et alertes
 
-- Le passage en panne ouvre un incident et envoie un e-mail « En panne »
-- Le retour à l'état opérationnel ferme l'incident et envoie un e-mail « Rétabli » avec la durée de la panne
+- Le passage en panne ouvre un incident et envoie une alerte « En panne »
+- Le retour à l'état opérationnel ferme l'incident et envoie une alerte « Rétabli » avec la durée de la panne
 - Un moniteur reste dans un seul incident tant qu'il est en panne : une seule alerte est envoyée
-- La mise en pause ferme l'incident en cours sans e-mail
+- La mise en pause ferme l'incident en cours sans alerte
 - L'état « En retard » n'envoie pas d'alerte
 
-La vérification des délais est lancée chaque minute par le Scheduler.
+Chaque moniteur choisit son canal : e-mail, ntfy (notification sur le téléphone) ou les deux. Les dates des alertes sont à l'heure de Paris.
+
+## Tâches planifiées internes
+
+| Fréquence | Tâche |
+|---|---|
+| Chaque minute | Contrôles actifs dus, puis vérification des délais |
+| Toutes les 5 minutes | Signal vers un service extérieur (`HEARTBEAT_URL`), `/fail` si la base est injoignable |
+| Chaque jour à 3 h 30 UTC | Suppression des pings plus anciens que `PING_RETENTION_DAYS` jours |
 
 ## Écrans
 
 - **Connexion** : adresse e-mail et mot de passe, cinq tentatives par quart d'heure
 - **Tableau de bord** : nombre de moniteurs par statut, liste triée par gravité, début de l'incident en cours
-- **Moniteur** : configuration, vingt derniers incidents, cinquante derniers pings (durée, taille, message, origine)
-- **Création et modification** : nom, intervalle et délai de grâce en minutes
+- **Moniteur** : configuration, courbes de durée et de taille des 50 derniers succès, 20 derniers incidents, 50 derniers pings
+- **Création et modification** : nom, type (non modifiable ensuite), cible, intervalle et délai de grâce en minutes, canal d'alerte
 - **Actions** : mise en pause et reprise, régénération du jeton, suppression avec l'historique
 
-Les dates sont affichées à l'heure de Paris.
+## API
+
+Lecture seule, authentification par en-tête `Authorization: Bearer <jeton>`. Dates au format ISO 8601 en UTC.
+
+| Route | Contenu |
+|---|---|
+| `GET /api/monitors` | Moniteurs avec statut et incident en cours |
+| `GET /api/monitors/{id}` | Moniteur, 20 derniers incidents, 50 derniers pings |
 
 ## Commandes
 
 | Commande | Rôle |
 |---|---|
 | `app:user:create <email>` | Crée un compte, mot de passe saisi sans écho, douze caractères minimum |
-| `app:monitor:create <nom> --interval=3600 --grace=600` | Crée un moniteur (durées en secondes) et affiche son jeton |
+| `app:monitor:create <nom> --interval=3600 --grace=600` | Crée une tâche planifiée (durées en secondes) et affiche son jeton |
+| `app:api-token:create <email> <nom>` | Crée un jeton d'API et l'affiche une seule fois |

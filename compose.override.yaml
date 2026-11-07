@@ -14,7 +14,7 @@ services:
       - /app/var
       # If you develop on Mac or Windows you can remove the vendor/ directory
       #  from the bind-mount for better performance by enabling the next line:
-      #- /app/vendor
+      - /app/vendor
     environment:
       FRANKENPHP_WORKER_CONFIG: watch
       FRANKENPHP_SITE_CONFIG: hot_reload
@@ -37,7 +37,7 @@ services:
 
 ###> symfony/mailer ###
   mailer:
-    image: axllent/mailpit
+    image: axllent/mailpit:latest@sha256:9b3a463be15354c0f0eba91697d80e3e0d8a5623ef0e627cacc836bc17fd5231
     ports:
       - "1025"
       - "8025"

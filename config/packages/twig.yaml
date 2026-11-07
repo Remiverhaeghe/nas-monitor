@@ -2,7 +2,7 @@ twig:
     file_name_pattern: '*.twig'
     date:
         format: 'd/m/Y H:i'
-        timezone: Europe/Paris
+        timezone: '%app.display_timezone%'
 
 when@test:
     twig:

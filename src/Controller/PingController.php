@@ -6,6 +6,7 @@ use App\Dto\PingPayload;
 use App\Enum\PingKind;
 use App\Repository\MonitorRepository;
 use App\Service\PingRecorder;
+use Doctrine\ORM\OptimisticLockException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -56,13 +57,21 @@ final class PingController
         }
 
         $vMonitor = $this->aMonitorRepository->findOneByPingToken($token);
-        if (null === $vMonitor) {
+        if (null === $vMonitor || $vMonitor->getType()->isActive()) {
             $this->aLogger->warning('Ping avec un jeton inconnu depuis {ip}', ['ip' => $vClientIp]);
 
             return new JsonResponse(['error' => 'not_found'], JsonResponse::HTTP_NOT_FOUND);
         }
 
-        $this->aPingRecorder->record($vMonitor, $kind, $pPayload, $vClientIp);
+        try {
+            $this->aPingRecorder->record($vMonitor, $kind, $pPayload, $vClientIp);
+        } catch (OptimisticLockException) {
+            $this->aLogger->notice('Ping en conflit avec une mise à jour du moniteur {monitor}, à réessayer', [
+                'monitor' => $vMonitor->getId(),
+            ]);
+
+            return new JsonResponse(['error' => 'conflict'], JsonResponse::HTTP_SERVICE_UNAVAILABLE, ['Retry-After' => 1]);
+        }
         $rResponse = new JsonResponse(['status' => $vMonitor->getStatus()->value]);
 
         return $rResponse;

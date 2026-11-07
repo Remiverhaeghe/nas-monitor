@@ -1,0 +1,15 @@
+<figure class="trend">
+    <figcaption>{{ title }}</figcaption>
+    <svg viewBox="0 0 {{ constant('App\\Chart\\TrendChart::WIDTH') }} {{ constant('App\\Chart\\TrendChart::HEIGHT') }}" role="img" aria-label="{{ title }}">
+        <line class="trend-baseline" x1="0" x2="{{ constant('App\\Chart\\TrendChart::WIDTH') }}" y1="{{ constant('App\\Chart\\TrendChart::HEIGHT') - 12 }}" y2="{{ constant('App\\Chart\\TrendChart::HEIGHT') - 12 }}" vector-effect="non-scaling-stroke"/>
+        <polyline class="trend-line" points="{{ chart.polyline }}" vector-effect="non-scaling-stroke"/>
+        {% for point in chart.points %}
+            <circle class="trend-hit" cx="{{ point.x }}" cy="{{ point.y }}" r="9"><title>{{ point.label }}</title></circle>
+        {% endfor %}
+    </svg>
+    <div class="trend-axis muted">
+        <span>{{ chart.firstDate|date('d/m H:i') }}</span>
+        <span>max {{ chart.maxValue|number_format(1, ',', ' ') }} {{ chart.unit }}</span>
+        <span>{{ chart.lastDate|date('d/m H:i') }}</span>
+    </div>
+</figure>

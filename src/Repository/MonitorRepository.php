@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Monitor;
 use App\Enum\MonitorStatus;
+use App\Enum\MonitorType;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -22,6 +23,21 @@ class MonitorRepository extends ServiceEntityRepository
         $rMonitor = $this->findOneBy(['pingTokenHash' => Monitor::hashToken($pToken)]);
 
         return $rMonitor;
+    }
+
+    /**
+     * @return list<Monitor>
+     */
+    public function findActiveChecks(): array
+    {
+        $rMonitors = $this->createQueryBuilder('m')
+            ->where('m.paused = false')
+            ->andWhere('m.type <> :heartbeat')
+            ->setParameter('heartbeat', MonitorType::Heartbeat->value)
+            ->getQuery()
+            ->getResult();
+
+        return $rMonitors;
     }
 
     /**
