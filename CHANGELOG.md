@@ -2,6 +2,10 @@
 
 ## Non publié
 
+### Intégration continue
+- Tests, PHPStan, PHP-CS-Fixer, vérification des gabarits, du YAML, du conteneur et du schéma à chaque push
+- Audit des dépendances Composer
+
 ### Gestion des moniteurs depuis l'interface
 - Création et modification d'un moniteur, avec affichage unique du jeton
 - Mise en pause, qui ferme l'incident en cours sans alerte, et reprise

@@ -1,5 +1,7 @@
 # nas-monitor
 
+[![CI](https://github.com/Remiverhaeghe/nas-monitor/actions/workflows/ci.yaml/badge.svg)](https://github.com/Remiverhaeghe/nas-monitor/actions/workflows/ci.yaml)
+
 Supervision des sauvegardes et des tâches planifiées d'un NAS auto-hébergé.
 
 Chaque tâche signale son exécution par un appel HTTP. Si un signal manque dans le délai prévu ou si la tâche signale un échec, un incident est ouvert et une alerte est envoyée par e-mail.
