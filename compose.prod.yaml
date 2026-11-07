@@ -35,3 +35,26 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-16}&charset=${POSTGRES_CHARSET:-utf8}
     healthcheck:
       disable: true
+
+  # Même image que la base, pour que pg_dump corresponde à la version du serveur
+  db-backup:
+    image: postgres:16-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
+    entrypoint: ["sh", "/scripts/backup-db"]
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      PGHOST: database
+      PGUSER: ${POSTGRES_USER:-app}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
+      PGDATABASE: ${POSTGRES_DB:-app}
+      DB_BACKUP_INTERVAL_SECONDS: ${DB_BACKUP_INTERVAL_SECONDS:-86400}
+      DB_BACKUP_KEEP: ${DB_BACKUP_KEEP:-14}
+      DB_BACKUP_PING_URL: ${DB_BACKUP_PING_URL:-}
+    volumes:
+      - ./docker/db-backup/backup-db:/scripts/backup-db:ro
+      - db_backups:/backups
+
+volumes:
+  db_backups:

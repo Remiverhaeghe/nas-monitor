@@ -2,6 +2,17 @@
 
 ## Non publié
 
+### Sauvegarde de la base
+- Service `db-backup` en production : `pg_dump` quotidien, 14 fichiers conservés, ping vers un moniteur dédié
+- Procédure de restauration documentée
+
+### Alertes
+- Rappel toutes les 6 heures d'une panne toujours en cours
+- Plages de maintenance par moniteur ou globales, sans alerte pendant la plage et rattrapage à la fin
+
+### Sécurité
+- Double authentification par code TOTP, activée par compte en ligne de commande
+
 ### Résultats anormaux
 - Alerte quand une sauvegarde réussit avec une taille en forte baisse ou une durée anormalement longue
 - Anomalie affichée dans l'historique des pings et exposée par l'API

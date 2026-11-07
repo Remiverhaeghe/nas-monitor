@@ -35,6 +35,12 @@ Un ping `start` est enregistré sans modifier le statut.
 
 Chaque moniteur choisit son canal : e-mail, ntfy (notification sur le téléphone) ou les deux. Les dates des alertes sont à l'heure de Paris.
 
+Une panne toujours en cours est rappelée toutes les `ALERT_REMINDER_HOURS` heures (6 par défaut, 0 pour désactiver) par une alerte « Toujours en panne ».
+
+## Maintenances
+
+Une plage de maintenance vise un moniteur ou tous. Pendant la plage, statuts et incidents sont enregistrés normalement, mais aucune alerte n'est envoyée (panne, rétablissement, anomalie, rappel). Une panne encore en cours à la fin de la plage est signalée dans la minute. Une plage dure 30 jours au plus ; le tableau de bord signale les plages en cours.
+
 ## Résultats anormaux
 
 Pour une tâche planifiée, chaque succès est comparé à la médiane des 10 succès précédents (5 au minimum pour juger) :
@@ -48,13 +54,14 @@ Le ping reste un succès et le statut ne change pas, mais l'anomalie est enregis
 
 | Fréquence | Tâche |
 |---|---|
-| Chaque minute | Contrôles actifs dus, puis vérification des délais |
+| Chaque minute | Contrôles actifs dus, vérification des délais, puis rappels des pannes en cours |
 | Toutes les 5 minutes | Signal vers un service extérieur (`HEARTBEAT_URL`), `/fail` si la base est injoignable |
 | Chaque jour à 3 h 30 UTC | Suppression des pings plus anciens que `PING_RETENTION_DAYS` jours |
 
 ## Écrans
 
-- **Connexion** : adresse e-mail et mot de passe, cinq tentatives par quart d'heure
+- **Connexion** : adresse e-mail et mot de passe, cinq tentatives par quart d'heure, puis code TOTP si la double authentification est activée
+- **Maintenances** : plages en cours et à venir, planification et suppression
 - **Tableau de bord** : nombre de moniteurs par statut, liste triée par gravité, début de l'incident en cours
 - **Moniteur** : configuration, courbes de durée et de taille des 50 derniers succès, 20 derniers incidents, 50 derniers pings
 - **Création et modification** : nom, type (non modifiable ensuite), cible, intervalle et délai de grâce en minutes, canal d'alerte
@@ -76,3 +83,5 @@ Lecture seule, authentification par en-tête `Authorization: Bearer <jeton>`. Da
 | `app:user:create <email>` | Crée un compte, mot de passe saisi sans écho, douze caractères minimum |
 | `app:monitor:create <nom> --interval=3600 --grace=600` | Crée une tâche planifiée (durées en secondes) et affiche son jeton |
 | `app:api-token:create <email> <nom>` | Crée un jeton d'API et l'affiche une seule fois |
+| `app:user:totp-enable <email>` | Active la double authentification : affiche la clé à saisir dans l'application, puis demande un code pour confirmer |
+| `app:user:totp-disable <email>` | Désactive la double authentification, par exemple après la perte du téléphone |

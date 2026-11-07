@@ -4,6 +4,9 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration;
+use Scheb\TwoFactorBundle\Model\Totp\TotpConfigurationInterface;
+use Scheb\TwoFactorBundle\Model\Totp\TwoFactorInterface;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -12,7 +15,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'app_user')]
 #[UniqueEntity('email')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFactorInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -32,6 +35,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column]
     private string $password = '';
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $totpSecret = null;
 
     public function __construct(string $pEmail)
     {
@@ -75,5 +81,31 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $pHashedPassword): void
     {
         $this->password = $pHashedPassword;
+    }
+
+    public function setTotpSecret(?string $pTotpSecret): void
+    {
+        $this->totpSecret = $pTotpSecret;
+    }
+
+    public function isTotpAuthenticationEnabled(): bool
+    {
+        return null !== $this->totpSecret;
+    }
+
+    public function getTotpAuthenticationUsername(): string
+    {
+        return $this->email;
+    }
+
+    public function getTotpAuthenticationConfiguration(): ?TotpConfigurationInterface
+    {
+        if (null === $this->totpSecret) {
+            return null;
+        }
+
+        $rConfiguration = new TotpConfiguration($this->totpSecret, TotpConfiguration::ALGORITHM_SHA1, 30, 6);
+
+        return $rConfiguration;
     }
 }

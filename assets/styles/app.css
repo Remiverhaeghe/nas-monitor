@@ -329,6 +329,13 @@ form.stacked select {
     border-radius: 6px;
 }
 
+.maintenance-banner {
+    padding: 8px 12px;
+    color: var(--late);
+    border: 1px solid var(--late);
+    border-radius: 6px;
+}
+
 .anomaly {
     color: var(--late);
     font-weight: 500;

@@ -9,6 +9,8 @@ use App\Entity\User;
 use App\Enum\MonitorType;
 use App\Enum\PingKind;
 use Doctrine\ORM\EntityManagerInterface;
+use OTPHP\TOTP;
+use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -57,6 +59,29 @@ class DashboardControllerTest extends WebTestCase
         $this->aClient->followRedirect();
 
         self::assertSelectorExists('.error');
+    }
+
+    public function testTotpCodeIsRequiredWhenEnabled(): void
+    {
+        $vUser = $this->createUser();
+        $vSecret = static::getContainer()->get(TotpAuthenticatorInterface::class)->generateSecret();
+        $vUser->setTotpSecret($vSecret);
+        $this->aEntityManager->flush();
+
+        $this->submitLogin(self::PASSWORD);
+        self::assertResponseRedirects('/');
+        $this->aClient->followRedirect();
+        self::assertResponseRedirects('/2fa');
+        $vCrawler = $this->aClient->followRedirect();
+
+        $this->aClient->submit($vCrawler->selectButton('Valider')->form(['_auth_code' => '000000']));
+        $vCrawler = $this->aClient->followRedirect();
+        self::assertSelectorExists('.error');
+
+        $this->aClient->submit($vCrawler->selectButton('Valider')->form(['_auth_code' => TOTP::createFromSecret($vSecret)->now()]));
+        self::assertResponseRedirects('/');
+        $this->aClient->followRedirect();
+        self::assertSelectorTextContains('h1', 'Moniteurs');
     }
 
     public function testDashboardListsMonitorsDownFirst(): void

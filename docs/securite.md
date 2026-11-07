@@ -26,6 +26,8 @@
 - [x] Toutes les pages sauf `/login` exigent une connexion
 - [x] Mots de passe hachés par l'algorithme `auto` de Symfony, rehachés à la connexion si besoin
 - [x] Cinq tentatives de connexion par quart d'heure
+- [x] Double authentification par code TOTP (scheb/2fa), activée par compte, avec confirmation d'un code avant activation
+- [ ] Secret TOTP stocké en clair dans la base : les sauvegardes doivent être chiffrées hors du NAS (voir [sauvegarde.md](sauvegarde.md))
 - [x] Jeton CSRF sur la connexion, la déconnexion et chaque action (pause, reprise, régénération, suppression)
 - [x] Actions de modification en `POST` uniquement
 - [x] Échappement automatique des sorties par Twig

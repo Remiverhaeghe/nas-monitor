@@ -3,6 +3,7 @@
 namespace App\Scheduler;
 
 use App\Check\ActiveCheckRunner;
+use App\Service\IncidentReminder;
 use App\Service\MonitorChecker;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -19,6 +20,7 @@ final class CheckMonitorsHandler
     public function __construct(
         private readonly ActiveCheckRunner $aActiveCheckRunner,
         private readonly MonitorChecker $aMonitorChecker,
+        private readonly IncidentReminder $aIncidentReminder,
         private readonly ManagerRegistry $aManagerRegistry,
         private readonly LoggerInterface $aLogger,
     ) {
@@ -28,6 +30,7 @@ final class CheckMonitorsHandler
     {
         $this->run('contrôles actifs', fn () => $this->aActiveCheckRunner->runDueChecks());
         $this->run('vérification des délais', fn () => $this->aMonitorChecker->check());
+        $this->run('rappels', fn () => $this->aIncidentReminder->remind());
     }
 
     private function run(string $pLabel, callable $pTask): void

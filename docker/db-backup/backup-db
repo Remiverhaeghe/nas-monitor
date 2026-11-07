@@ -1,0 +1,30 @@
+#!/bin/sh
+# Sauvegarde périodique de la base, signalée à nas-monitor par un ping de début et un ping de fin
+set -u
+
+ping_monitor() {
+    [ -z "$DB_BACKUP_PING_URL" ] && return 0
+    wget -q -O /dev/null -T 10 --header 'Content-Type: application/json' --post-data "$2" "$DB_BACKUP_PING_URL$1" \
+        || echo "Ping $1 impossible" >&2
+}
+
+while true; do
+    vStart=$(date +%s)
+    vFile="/backups/nas-monitor-$(date -u +%Y%m%d-%H%M%S).dump"
+    ping_monitor /start '{}'
+
+    if pg_dump --format=custom --file="$vFile.tmp" 2> /tmp/pg_dump.err && mv "$vFile.tmp" "$vFile"; then
+        vSize=$(wc -c < "$vFile" | tr -d ' ')
+        vDurationMs=$(( ($(date +%s) - vStart) * 1000 ))
+        ping_monitor '' "{\"duration_ms\":$vDurationMs,\"size_bytes\":$vSize,\"message\":\"$(basename "$vFile")\"}"
+        echo "Sauvegarde terminée : $vFile ($vSize octets)"
+        ls -1t /backups/nas-monitor-*.dump | tail -n +$((DB_BACKUP_KEEP + 1)) | xargs -r rm -f
+    else
+        rm -f "$vFile.tmp"
+        vMessage=$(tail -c 300 /tmp/pg_dump.err | tr -d '"\\\r' | tr '\n' ' ')
+        ping_monitor /fail "{\"message\":\"pg_dump en échec : $vMessage\"}"
+        echo "Sauvegarde en échec : $vMessage" >&2
+    fi
+
+    sleep "$DB_BACKUP_INTERVAL_SECONDS"
+done

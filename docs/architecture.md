@@ -8,6 +8,7 @@
 | `database` | PostgreSQL 16 |
 | `mailer` | Mailpit, développement et simulation |
 | `worker` | Scheduler, contrôles actifs et envoi des notifications, production uniquement (`compose.prod.yaml`) |
+| `db-backup` | `pg_dump` périodique de la base, production uniquement (voir [sauvegarde.md](sauvegarde.md)) |
 
 En développement, le worker se lance à la main dans le conteneur `php`. En production, FrankenPHP fonctionne en mode worker : l'application reste chargée entre les requêtes, les services ne gardent donc aucun état propre à une requête.
 
@@ -19,29 +20,34 @@ Les images sont fixées par empreinte (`@sha256:`) ; Dependabot propose leurs mi
 src/
   Chart/            TrendChart, TrendChartFactory
   Check/            ActiveChecker, ActiveCheckRunner, CheckResult
-  Command/          CreateApiTokenCommand, CreateMonitorCommand, CreateUserCommand
-  Controller/       DashboardController, MonitorController, PingController, SecurityController
+  Command/          CreateApiTokenCommand, CreateMonitorCommand, CreateUserCommand,
+                    DisableTotpCommand, EnableTotpCommand
+  Controller/       DashboardController, MaintenanceController, MonitorController,
+                    PingController, SecurityController
   Controller/Api/   MonitorApiController
   DataFixtures/     AppFixtures
-  Dto/              MonitorInput, PingPayload
-  Entity/           ApiToken, Incident, Monitor, Ping, User
+  Dto/              MaintenanceInput, MonitorInput, PingPayload
+  Entity/           ApiToken, Incident, MaintenanceWindow, Monitor, Ping, User
   Enum/             IncidentCause, MonitorStatus, MonitorType, NotificationChannel, PingKind
   EventSubscriber/  SecurityHeadersSubscriber
-  Form/             MonitorFormType
+  Form/             MaintenanceFormType, MonitorFormType
   Notification/     AlertNotifier, NtfyMessage, NtfyMessageHandler
   Repository/       un dépôt par entité
   Scheduler/        messages et gestionnaires des tâches planifiées
   Security/         ApiTokenHandler
-  Service/          AnomalyDetector, IncidentManager, MonitorChecker, PingRecorder
+  Service/          AnomalyDetector, IncidentManager, IncidentReminder, MonitorChecker,
+                    PingRecorder
   Schedule.php      planning du Scheduler
-templates/          Twig : base, dashboard, monitor, security
+templates/          Twig : base, dashboard, maintenance, monitor, security
 assets/             feuille de style et contrôleur Stimulus de confirmation
+docker/db-backup/   script de sauvegarde de la base
 migrations/         migrations Doctrine
 simulation/         tâches de la simulation locale
 tests/
   Chart/            TrendChartTest
   Check/            ActiveCheckerTest
-  Controller/       DashboardControllerTest, MonitorControllerTest, PingControllerTest
+  Controller/       DashboardControllerTest, MaintenanceControllerTest, MonitorControllerTest,
+                    PingControllerTest
   Controller/Api/   MonitorApiControllerTest
   Entity/           MonitorTest
   EventSubscriber/  SecurityHeadersSubscriberTest
@@ -75,10 +81,11 @@ Les contrôles actifs produisent des pings comme les tâches planifiées : un se
 2. `ActiveCheckRunner` effectue les contrôles HTTP, TCP et TLS arrivés à échéance et les enregistre par `PingRecorder`
 3. `MonitorChecker` recalcule le statut des moniteurs opérationnels ou en retard
 4. Chaque changement passe par `IncidentManager`
+5. `IncidentReminder` signale les pannes qui durent et celles retenues pendant une maintenance
 
 **Alertes**
 
-`AlertNotifier` choisit le canal du moniteur. E-mails et messages ntfy partent par Messenger (transport `async`) : un serveur lent ne bloque pas la vérification. Les échecs d'envoi sont réessayés trois fois, puis placés dans le transport `failed`.
+`AlertNotifier` retient toute alerte pendant une maintenance, puis choisit le canal du moniteur. `Incident::lastNotifiedAt` reste vide tant qu'aucune alerte n'est partie, ce qui permet à `IncidentReminder` de la rattraper. E-mails et messages ntfy partent par Messenger (transport `async`) : un serveur lent ne bloque pas la vérification. Les échecs d'envoi sont réessayés trois fois, puis placés dans le transport `failed`.
 
 ## Données
 
@@ -86,8 +93,9 @@ Les contrôles actifs produisent des pings comme les tâches planifiées : un se
 |---|---|
 | `monitor` | Configuration, état courant et version |
 | `ping` | Signaux reçus et résultats de contrôles, index `(monitor_id, received_at)` et `(received_at)` |
-| `incident` | Pannes, index `(monitor_id, resolved_at)` |
-| `app_user` | Comptes |
+| `incident` | Pannes et date de dernière alerte, index `(monitor_id, resolved_at)` |
+| `maintenance_window` | Plages de maintenance, index `(starts_at, ends_at)` |
+| `app_user` | Comptes, secret TOTP |
 | `api_token` | Jetons d'API (empreinte SHA-256, dernière utilisation) |
 | `messenger_messages` | Files Messenger |
 

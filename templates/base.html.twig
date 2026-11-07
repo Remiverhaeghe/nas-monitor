@@ -22,10 +22,12 @@
         {% endif %}
     </head>
     <body>
-        {% if app.user %}
+        {% if app.user and not is_granted('IS_AUTHENTICATED_2FA_IN_PROGRESS') %}
             <header>
                 <a class="brand" href="{{ path('app_dashboard') }}">nas-monitor</a>
                 <nav>
+                    <a href="{{ path('app_maintenance_index') }}">Maintenances</a>
+                    &middot;
                     <span class="muted">{{ app.user.userIdentifier }}</span>
                     &middot;
                     <a href="{{ logout_path() }}">Déconnexion</a>
