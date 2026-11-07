@@ -35,6 +35,15 @@ Un ping `start` est enregistré sans modifier le statut.
 
 Chaque moniteur choisit son canal : e-mail, ntfy (notification sur le téléphone) ou les deux. Les dates des alertes sont à l'heure de Paris.
 
+## Résultats anormaux
+
+Pour une tâche planifiée, chaque succès est comparé à la médiane des 10 succès précédents (5 au minimum pour juger) :
+
+- taille en baisse de plus de `ANOMALY_SIZE_DROP_PERCENT` % (50 par défaut)
+- durée supérieure à `ANOMALY_DURATION_FACTOR` fois la médiane (3 par défaut)
+
+Le ping reste un succès et le statut ne change pas, mais l'anomalie est enregistrée, affichée dans l'historique et signalée par une alerte « Anomalie ». Une seule alerte est envoyée par série d'exécutions anormales consécutives.
+
 ## Tâches planifiées internes
 
 | Fréquence | Tâche |

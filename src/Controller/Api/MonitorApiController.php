@@ -108,6 +108,7 @@ final class MonitorApiController
             'duration_ms' => $pPing->getDurationMs(),
             'size_bytes' => $pPing->getSizeBytes(),
             'message' => $pPing->getMessage(),
+            'anomaly' => $pPing->getAnomaly(),
         ];
 
         return $rData;

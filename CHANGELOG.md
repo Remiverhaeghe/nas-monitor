@@ -2,6 +2,10 @@
 
 ## Non publié
 
+### Résultats anormaux
+- Alerte quand une sauvegarde réussit avec une taille en forte baisse ou une durée anormalement longue
+- Anomalie affichée dans l'historique des pings et exposée par l'API
+
 ### Contrôles actifs et notifications
 - Moniteurs de type site web (HTTP), port TCP et certificat TLS, contrôlés par l'application
 - Notifications ntfy sur le téléphone, canal choisi par moniteur
