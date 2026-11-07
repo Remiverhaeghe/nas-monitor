@@ -2,9 +2,11 @@
 
 namespace App\Tests\Service;
 
+use App\Dto\PingPayload;
 use App\Entity\Incident;
 use App\Entity\Monitor;
 use App\Entity\Ping;
+use App\Enum\MonitorStatus;
 use App\Enum\MonitorType;
 use App\Enum\NotificationChannel;
 use App\Enum\PingKind;
@@ -56,6 +58,28 @@ class MaintenanceTest extends KernelTestCase
         self::assertSame(1, $this->aEntityManager->getRepository(Ping::class)->count([]));
     }
 
+    public function testAnomalyIsRecordedAndAlertedOncePerSeries(): void
+    {
+        $vMonitor = $this->createMonitor(NotificationChannel::Email);
+        $vRecorder = static::getContainer()->get(PingRecorder::class);
+        $vClock = self::mockTime('2026-11-07 12:00:00');
+
+        for ($vIndex = 0; $vIndex < 6; ++$vIndex) {
+            $vClock->sleep(3600);
+            $vRecorder->record($vMonitor, PingKind::Success, $this->payload(1000000000), null);
+        }
+        $vClock->sleep(3600);
+        $vFirst = $vRecorder->record($vMonitor, PingKind::Success, $this->payload(100000000), null);
+        $vClock->sleep(3600);
+        $vSecond = $vRecorder->record($vMonitor, PingKind::Success, $this->payload(100000000), null);
+
+        self::assertNotNull($vFirst->getAnomaly());
+        self::assertNotNull($vSecond->getAnomaly());
+        self::assertSame(MonitorStatus::Up, $vMonitor->getStatus());
+        self::assertQueuedEmailCount(1);
+        self::assertEmailSubjectContains(self::getMailerMessage(0), 'Anomalie : Sauvegarde restic');
+    }
+
     public function testNtfyChannelSendsNoEmail(): void
     {
         $vMonitor = $this->createMonitor(NotificationChannel::Ntfy);
@@ -69,6 +93,15 @@ class MaintenanceTest extends KernelTestCase
         self::assertCount(1, $vMessages);
         self::assertInstanceOf(NtfyMessage::class, $vMessages[0]);
         self::assertTrue($vMessages[0]->urgent);
+    }
+
+    private function payload(int $pSizeBytes): PingPayload
+    {
+        $rPayload = new PingPayload();
+        $rPayload->durationMs = 60000;
+        $rPayload->sizeBytes = $pSizeBytes;
+
+        return $rPayload;
     }
 
     private function createMonitor(NotificationChannel $pChannel): Monitor

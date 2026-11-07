@@ -112,7 +112,10 @@
                             <td>{{ ping.kind.label }}</td>
                             <td>{{ ping.durationMs is not null ? (ping.durationMs / 1000)|number_format(1, ',', ' ') ~ ' s' : '-' }}</td>
                             <td>{{ ping.sizeBytes is not null ? (ping.sizeBytes / 1048576)|number_format(1, ',', ' ') ~ ' Mo' : '-' }}</td>
-                            <td class="wrap">{{ ping.message ?? '-' }}</td>
+                            <td class="wrap">
+                                {{ ping.message ?? '-' }}
+                                {% if ping.anomaly %}<br><span class="anomaly">Anomalie : {{ ping.anomaly }}</span>{% endif %}
+                            </td>
                             <td>{{ ping.sourceIp ?? '-' }}</td>
                         </tr>
                     {% endfor %}

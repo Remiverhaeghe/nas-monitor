@@ -41,6 +41,9 @@ class Ping
     #[ORM\Column(length: 45, nullable: true)]
     private ?string $sourceIp;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $anomaly = null;
+
     public function __construct(
         Monitor $pMonitor,
         PingKind $pKind,
@@ -97,5 +100,15 @@ class Ping
     public function getSourceIp(): ?string
     {
         return $this->sourceIp;
+    }
+
+    public function markAnomaly(string $pAnomaly): void
+    {
+        $this->anomaly = mb_substr($pAnomaly, 0, 255);
+    }
+
+    public function getAnomaly(): ?string
+    {
+        return $this->anomaly;
     }
 }

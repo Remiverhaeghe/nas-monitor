@@ -329,6 +329,11 @@ form.stacked select {
     border-radius: 6px;
 }
 
+.anomaly {
+    color: var(--late);
+    font-weight: 500;
+}
+
 button.danger {
     background: var(--down);
 }

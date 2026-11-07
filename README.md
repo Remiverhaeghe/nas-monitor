@@ -74,6 +74,7 @@ docker compose exec php bin/console doctrine:migrations:migrate --env=test --no-
 | `PING_RETENTION_DAYS` | Durée de conservation des pings (90 par défaut) |
 | `TLS_WARNING_DAYS` | Délai d'alerte avant expiration d'un certificat (14 par défaut) |
 | `TRUSTED_PROXIES` | Adresses des proxys inverses de confiance, vide par défaut |
+| `ANOMALY_SIZE_DROP_PERCENT`, `ANOMALY_DURATION_FACTOR` | Seuils de détection d'un résultat anormal (50 % et 3 par défaut) |
 | `DATABASE_URL` | Connexion PostgreSQL, fournie par `compose.yaml` |
 
 Les valeurs propres à une installation vont dans `.env.local`, non versionné.

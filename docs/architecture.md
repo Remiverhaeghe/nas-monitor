@@ -32,7 +32,7 @@ src/
   Repository/       un dépôt par entité
   Scheduler/        messages et gestionnaires des tâches planifiées
   Security/         ApiTokenHandler
-  Service/          IncidentManager, MonitorChecker, PingRecorder
+  Service/          AnomalyDetector, IncidentManager, MonitorChecker, PingRecorder
   Schedule.php      planning du Scheduler
 templates/          Twig : base, dashboard, monitor, security
 assets/             feuille de style et contrôleur Stimulus de confirmation
@@ -47,7 +47,7 @@ tests/
   EventSubscriber/  SecurityHeadersSubscriberTest
   Notification/     NtfyMessageHandlerTest
   Scheduler/        ExternalHeartbeatHandlerTest
-  Service/          MaintenanceTest, MonitorCheckerTest
+  Service/          AnomalyDetectorTest, MaintenanceTest, MonitorCheckerTest
 ```
 
 ## Règles métier
@@ -65,7 +65,7 @@ Les contrôles actifs produisent des pings comme les tâches planifiées : un se
 **Réception d'un ping**
 
 1. `PingController` vérifie la limite de débit, puis retrouve le moniteur par l'empreinte du jeton
-2. `PingRecorder` crée le `Ping` et met à jour le moniteur
+2. `PingRecorder` crée le `Ping`, le compare aux succès précédents (`AnomalyDetector`) et met à jour le moniteur
 3. En cas de changement de statut, `IncidentManager` ouvre ou ferme l'incident
 4. Un seul `flush` enregistre l'ensemble
 

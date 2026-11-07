@@ -3,6 +3,7 @@
 namespace App\Notification;
 
 use App\Entity\Incident;
+use App\Entity\Monitor;
 use App\Enum\IncidentCause;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\MailerInterface;
@@ -40,7 +41,7 @@ final class AlertNotifier
         };
 
         $this->send(
-            $pIncident,
+            $vMonitor,
             'En panne : '.$vMonitor->getName(),
             \sprintf(
                 "Le moniteur « %s » est en panne depuis le %s.\n\nCause : %s.\nDernier signal : %s.\n",
@@ -58,7 +59,7 @@ final class AlertNotifier
         $vMonitor = $pIncident->getMonitor();
 
         $this->send(
-            $pIncident,
+            $vMonitor,
             'Rétabli : '.$vMonitor->getName(),
             \sprintf(
                 "Le moniteur « %s » fonctionne de nouveau depuis le %s.\n\nDurée de la panne : %d min.\n",
@@ -70,9 +71,24 @@ final class AlertNotifier
         );
     }
 
-    private function send(Incident $pIncident, string $pSubject, string $pBody, bool $pUrgent): void
+    public function sendAnomaly(Monitor $pMonitor, string $pAnomaly, \DateTimeImmutable $pReceivedAt): void
     {
-        $vChannel = $pIncident->getMonitor()->getNotificationChannel();
+        $this->send(
+            $pMonitor,
+            'Anomalie : '.$pMonitor->getName(),
+            \sprintf(
+                "La tâche « %s » a réussi le %s, mais son résultat est inhabituel.\n\n%s.\n\nÀ vérifier : une sauvegarde qui réussit avec un résultat anormal peut être incomplète.\n",
+                $pMonitor->getName(),
+                $this->format($pReceivedAt),
+                $pAnomaly,
+            ),
+            true,
+        );
+    }
+
+    private function send(Monitor $pMonitor, string $pSubject, string $pBody, bool $pUrgent): void
+    {
+        $vChannel = $pMonitor->getNotificationChannel();
 
         if ($vChannel->includesEmail()) {
             $this->aMailer->send((new Email())
