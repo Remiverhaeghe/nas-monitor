@@ -33,7 +33,7 @@ final class DisableTotpCommand
             return Command::FAILURE;
         }
 
-        $vUser->setTotpSecret(null);
+        $vUser->disableTotp();
         $this->aEntityManager->flush();
         $this->aAuditLogger->log(AuditAction::TotpDisable, 'Compte '.$vUser->getEmail());
         $pIo->success('Double authentification désactivée pour '.$vUser->getEmail().'.');

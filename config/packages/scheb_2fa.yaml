@@ -10,3 +10,5 @@ scheb_two_factor:
         # Tolère un décalage d'horloge de quelques secondes entre le téléphone et le serveur
         leeway: 10
         template: security/2fa_form.html.twig
+    backup_codes:
+        enabled: true

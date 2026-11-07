@@ -8,9 +8,10 @@
         <a class="button" href="{{ path('app_monitor_new') }}">Nouveau moniteur</a>
     </div>
 
-    {% for window in active_maintenances %}
+    {% for maintenance in active_maintenances %}
+        {% set window = maintenance.window %}
         <p class="maintenance-banner">
-            Maintenance en cours jusqu'au {{ window.endsAt|date }}
+            Maintenance en cours jusqu'au {{ maintenance.ends_at|date }}
             ({{ window.monitor ? window.monitor.name : 'tous les moniteurs' }}) : {{ window.reason }}. Aucune alerte n'est envoyée.
         </p>
     {% endfor %}

@@ -18,6 +18,7 @@ enum AuditAction: string
     case ApiTokenCreate = 'api_token_create';
     case TotpEnable = 'totp_enable';
     case TotpDisable = 'totp_disable';
+    case BackupCodesGenerate = 'backup_codes_generate';
 
     public function label(): string
     {
@@ -36,6 +37,7 @@ enum AuditAction: string
             self::ApiTokenCreate => 'Création de jeton d\'API',
             self::TotpEnable => 'Double authentification activée',
             self::TotpDisable => 'Double authentification désactivée',
+            self::BackupCodesGenerate => 'Nouveaux codes de secours',
         };
 
         return $rLabel;

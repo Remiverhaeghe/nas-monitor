@@ -74,7 +74,7 @@ jobs:
       - name: Doctrine Schema Validator
         run: docker compose exec -T php bin/console -e test doctrine:schema:validate
       - name: Run PHPUnit with coverage
-        run: docker compose exec -T -e XDEBUG_MODE=coverage php bin/phpunit --coverage-text --only-summary-for-coverage-text --coverage-clover var/coverage.xml
+        run: docker compose exec -T -e XDEBUG_MODE=coverage php bin/phpunit --coverage-text --only-summary-for-coverage-text --coverage-clover var/coverage.xml --coverage-xml var/coverage/coverage-xml --log-junit var/coverage/junit.xml
       - name: Minimum coverage
         run: |
           docker compose exec -T -e MIN_COVERAGE php php -r '
@@ -85,3 +85,6 @@ jobs:
           '
         env:
           MIN_COVERAGE: 80
+      # Les tests partagent la base de test : un seul processus
+      - name: Mutation testing
+        run: docker compose exec -T php vendor/bin/infection --coverage=var/coverage --skip-initial-tests --threads=1 --no-progress --show-mutations=0

@@ -2,6 +2,16 @@
 
 ## Non publié
 
+### Double authentification renforcée
+- Secret TOTP chiffré en base (libsodium), clé `TOTP_ENCRYPTION_KEY` hors de la base
+- Dix codes de secours à usage unique, affichés à l'activation, commande `app:user:backup-codes` pour les remplacer
+
+### Maintenances récurrentes
+- Plage répétée chaque jour ou chaque semaine, à la même heure locale y compris après un changement d'heure
+
+### Qualité des tests
+- Tests de mutation avec Infection sur le code métier, seuil vérifié en CI
+
 ### Suivi et confort
 - Tableau de bord et page d'un moniteur mis à jour en direct (Mercure), sans recharger la page
 - Groupes de moniteurs sur le tableau de bord, exposés par l'API

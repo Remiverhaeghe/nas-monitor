@@ -71,4 +71,33 @@ class MaintenanceControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(422);
         self::assertSelectorTextContains('form', 'La fin doit être postérieure au début.');
     }
+
+    public function testWeeklyMaintenanceIsDescribed(): void
+    {
+        $vCrawler = $this->aClient->request('GET', '/maintenances');
+        $this->aClient->submit($vCrawler->selectButton('Planifier')->form([
+            'maintenance_form[startsAt]' => '2026-11-08T02:00',
+            'maintenance_form[endsAt]' => '2026-11-08T04:00',
+            'maintenance_form[recurrence]' => 'weekly',
+            'maintenance_form[reason]' => 'Mises à jour automatiques',
+        ]));
+
+        self::assertResponseRedirects('/maintenances');
+        $this->aClient->followRedirect();
+        self::assertSelectorTextContains('table', 'Chaque dimanche de 02:00 à 04:00');
+    }
+
+    public function testRepeatedMaintenanceLongerThanItsPeriodIsRejected(): void
+    {
+        $vCrawler = $this->aClient->request('GET', '/maintenances');
+        $this->aClient->submit($vCrawler->selectButton('Planifier')->form([
+            'maintenance_form[startsAt]' => '2026-11-08T02:00',
+            'maintenance_form[endsAt]' => '2026-11-09T02:00',
+            'maintenance_form[recurrence]' => 'daily',
+            'maintenance_form[reason]' => 'Erreur de saisie',
+        ]));
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('form', 'plus courte que l\'intervalle');
+    }
 }

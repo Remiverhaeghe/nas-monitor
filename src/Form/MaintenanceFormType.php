@@ -4,9 +4,11 @@ namespace App\Form;
 
 use App\Dto\MaintenanceInput;
 use App\Entity\Monitor;
+use App\Enum\MaintenanceRecurrence;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
+use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -37,6 +39,12 @@ final class MaintenanceFormType extends AbstractType
             ])
             ->add('startsAt', DateTimeType::class, ['label' => 'Début'] + $vDateOptions)
             ->add('endsAt', DateTimeType::class, ['label' => 'Fin'] + $vDateOptions)
+            ->add('recurrence', EnumType::class, [
+                'class' => MaintenanceRecurrence::class,
+                'label' => 'Répétition',
+                'choice_label' => static fn (MaintenanceRecurrence $pRecurrence): string => $pRecurrence->label(),
+                'help' => 'Début et fin définissent la première occurrence, répétée ensuite à la même heure.',
+            ])
             ->add('reason', TextType::class, [
                 'label' => 'Motif',
                 'help' => 'Par exemple : mise à jour du NAS, remplacement d\'un disque.',

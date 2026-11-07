@@ -33,4 +33,4 @@ docker compose -f compose.yaml -f compose.prod.yaml start php worker
 
 ## Copie hors du NAS
 
-Le volume `db_backups` est sur le même NAS que la base : il protège d'une erreur de manipulation ou d'une base corrompue, pas d'une panne du NAS. Les fichiers doivent être copiés ailleurs (disque externe, stockage distant), chiffrés : ils contiennent les empreintes des mots de passe et des jetons, ainsi que les secrets TOTP.
+Le volume `db_backups` est sur le même NAS que la base : il protège d'une erreur de manipulation ou d'une base corrompue, pas d'une panne du NAS. Les fichiers doivent être copiés ailleurs (disque externe, stockage distant), chiffrés : ils contiennent les empreintes des mots de passe, des jetons et des codes de secours, ainsi que les secrets TOTP chiffrés. La clé `TOTP_ENCRYPTION_KEY` se conserve à part, dans un gestionnaire de mots de passe : sans elle, une base restaurée ne permet plus de se connecter aux comptes protégés (`app:user:totp-disable` puis `app:user:totp-enable`).

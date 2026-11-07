@@ -8,6 +8,8 @@ use App\Entity\Ping;
 use App\Entity\User;
 use App\Enum\MonitorType;
 use App\Enum\PingKind;
+use App\Security\BackupCodeGenerator;
+use App\Security\SecretCipher;
 use Doctrine\ORM\EntityManagerInterface;
 use OTPHP\TOTP;
 use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
@@ -64,9 +66,12 @@ class DashboardControllerTest extends WebTestCase
     public function testTotpCodeIsRequiredWhenEnabled(): void
     {
         $vUser = $this->createUser();
-        $vSecret = static::getContainer()->get(TotpAuthenticatorInterface::class)->generateSecret();
-        $vUser->setTotpSecret($vSecret);
-        $this->aEntityManager->flush();
+        $vSecret = $this->enableTotp($vUser);
+
+        self::assertStringNotContainsString(
+            $vSecret,
+            (string) $this->aEntityManager->getConnection()->fetchOne('SELECT totp_secret FROM app_user WHERE id = ?', [$vUser->getId()]),
+        );
 
         $this->submitLogin(self::PASSWORD);
         self::assertResponseRedirects('/');
@@ -82,6 +87,36 @@ class DashboardControllerTest extends WebTestCase
         self::assertResponseRedirects('/');
         $this->aClient->followRedirect();
         self::assertSelectorTextContains('h1', 'Moniteurs');
+    }
+
+    public function testUnreadableTotpSecretBlocksLogin(): void
+    {
+        $vUser = $this->createUser();
+        $vUser->enableTotp('JBSWY3DPEHPK3PXP', (new SecretCipher(SecretCipher::generateKey()))->encrypt('JBSWY3DPEHPK3PXP'));
+        $this->aEntityManager->flush();
+
+        $this->submitLogin(self::PASSWORD);
+        self::assertResponseStatusCodeSame(500);
+
+        $this->aClient->request('GET', '/');
+        self::assertResponseRedirects('/login');
+    }
+
+    public function testBackupCodeWorksOnlyOnce(): void
+    {
+        $vUser = $this->createUser();
+        $this->enableTotp($vUser);
+        $vCodes = BackupCodeGenerator::generate();
+        $vUser->replaceBackupCodes($vCodes);
+        $this->aEntityManager->flush();
+
+        $this->submitTotpStep(strtoupper($vCodes[0]));
+        self::assertResponseRedirects('/');
+        $this->aClient->restart();
+
+        $this->submitTotpStep($vCodes[0]);
+        $this->aClient->followRedirect();
+        self::assertSelectorExists('.error');
     }
 
     public function testDashboardListsMonitorsDownFirst(): void
@@ -155,6 +190,23 @@ class DashboardControllerTest extends WebTestCase
         $this->aEntityManager->flush();
 
         return $rUser;
+    }
+
+    private function enableTotp(User $pUser): string
+    {
+        $rSecret = static::getContainer()->get(TotpAuthenticatorInterface::class)->generateSecret();
+        $pUser->enableTotp($rSecret, static::getContainer()->get(SecretCipher::class)->encrypt($rSecret));
+        $this->aEntityManager->flush();
+
+        return $rSecret;
+    }
+
+    private function submitTotpStep(string $pCode): void
+    {
+        $this->submitLogin(self::PASSWORD);
+        $this->aClient->followRedirect();
+        $vCrawler = $this->aClient->followRedirect();
+        $this->aClient->submit($vCrawler->selectButton('Valider')->form(['_auth_code' => $pCode]));
     }
 
     private function createMonitor(string $pName, ?PingKind $pPingKind): Monitor

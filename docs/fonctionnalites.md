@@ -41,6 +41,8 @@ Une panne toujours en cours est rappelée toutes les `ALERT_REMINDER_HOURS` heur
 
 Une plage de maintenance vise un moniteur ou tous. Pendant la plage, statuts et incidents sont enregistrés normalement, mais aucune alerte n'est envoyée (panne, rétablissement, anomalie, rappel). Une panne encore en cours à la fin de la plage est signalée dans la minute. Une plage dure 30 jours au plus ; le tableau de bord signale les plages en cours.
 
+Une plage peut se répéter chaque jour ou chaque semaine : le début et la fin saisis définissent la première occurrence, répétée ensuite à la même heure de Paris, y compris après un changement d'heure. Une occurrence doit être plus courte que l'intervalle de répétition. Une plage répétée n'a pas de fin : on la supprime pour l'arrêter.
+
 ## Groupes et disponibilité
 
 Un moniteur peut appartenir à un groupe (Sauvegardes, Services…). Le tableau de bord affiche les groupes par ordre alphabétique, les moniteurs sans groupe en dernier.
@@ -73,7 +75,7 @@ Le ping reste un succès et le statut ne change pas, mais l'anomalie est enregis
 
 ## Écrans
 
-- **Connexion** : adresse e-mail et mot de passe, cinq tentatives par quart d'heure, puis code TOTP si la double authentification est activée
+- **Connexion** : adresse e-mail et mot de passe, cinq tentatives par quart d'heure, puis code TOTP ou code de secours si la double authentification est activée
 - **Maintenances** : plages en cours et à venir, planification et suppression
 - **Journal** : 200 dernières actions avec date, auteur, détail et adresse IP
 - **Tableau de bord** : nombre de moniteurs par statut, moniteurs par groupe triés par gravité, début de l'incident en cours, disponibilité sur 7 jours
@@ -97,7 +99,8 @@ Lecture seule, authentification par en-tête `Authorization: Bearer <jeton>`. Da
 | `app:user:create <email>` | Crée un compte, mot de passe saisi sans écho, douze caractères minimum |
 | `app:monitor:create <nom> --interval=3600 --grace=600` | Crée une tâche planifiée (durées en secondes) et affiche son jeton |
 | `app:api-token:create <email> <nom>` | Crée un jeton d'API et l'affiche une seule fois |
-| `app:user:totp-enable <email>` | Active la double authentification : affiche la clé à saisir dans l'application, puis demande un code pour confirmer |
+| `app:user:totp-enable <email>` | Active la double authentification : affiche la clé à saisir dans l'application, demande un code pour confirmer, puis affiche dix codes de secours |
+| `app:user:backup-codes <email>` | Remplace les codes de secours ; les anciens cessent de fonctionner |
 | `app:user:totp-disable <email>` | Désactive la double authentification, par exemple après la perte du téléphone |
 | `app:report:send` | Envoie tout de suite le rapport des 7 derniers jours |
 

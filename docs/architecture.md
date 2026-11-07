@@ -26,23 +26,24 @@ src/
   Chart/            TrendChart, TrendChartFactory
   Check/            ActiveChecker, ActiveCheckRunner, CheckResult
   Command/          CreateApiTokenCommand, CreateMonitorCommand, CreateUserCommand,
-                    DisableTotpCommand, EnableTotpCommand, SendWeeklyReportCommand
+                    DisableTotpCommand, EnableTotpCommand, RegenerateBackupCodesCommand,
+                    SendWeeklyReportCommand
   Controller/       AuditController, DashboardController, MaintenanceController,
                     MonitorController, PingController, SecurityController
   Controller/Api/   MonitorApiController
   DataFixtures/     AppFixtures
   Dto/              MaintenanceInput, MonitorInput, PingPayload
   Entity/           ApiToken, AuditLog, Incident, MaintenanceWindow, Monitor, Ping, User
-  Enum/             AuditAction, IncidentCause, MonitorStatus, MonitorType, NotificationChannel,
-                    PingKind
-  EventListener/    LiveUpdatePublisher, WorkerHeartbeatListener
+  Enum/             AuditAction, IncidentCause, MaintenanceRecurrence, MonitorStatus, MonitorType,
+                    NotificationChannel, PingKind
+  EventListener/    LiveUpdatePublisher, UserTotpSecretListener, WorkerHeartbeatListener
   EventSubscriber/  LoginAuditSubscriber, SecurityHeadersSubscriber
   Form/             MaintenanceFormType, MonitorFormType
   Notification/     AlertNotifier, NtfyMessage, NtfyMessageHandler
   Report/           WeeklyReportSender
   Repository/       un dépôt par entité
   Scheduler/        messages et gestionnaires des tâches planifiées
-  Security/         ApiTokenHandler
+  Security/         ApiTokenHandler, BackupCodeGenerator, SecretCipher
   Service/          AnomalyDetector, AvailabilityCalculator, IncidentManager, IncidentReminder,
                     MonitorChecker, PingRecorder
   Schedule.php      planning du Scheduler
@@ -57,11 +58,12 @@ tests/
   Controller/       AuditControllerTest, DashboardControllerTest, MaintenanceControllerTest,
                     MonitorControllerTest, PingControllerTest
   Controller/Api/   MonitorApiControllerTest
-  Entity/           MonitorTest
+  Entity/           MaintenanceWindowTest, MonitorTest
   EventListener/    LiveUpdatePublisherTest, WorkerHeartbeatListenerTest
   EventSubscriber/  SecurityHeadersSubscriberTest
   Notification/     NtfyMessageHandlerTest
   Scheduler/        ExternalHeartbeatHandlerTest
+  Security/         SecretCipherTest
   Service/          AnomalyDetectorTest, MaintenanceTest, MonitorCheckerTest, ReportingTest
 ```
 
@@ -96,6 +98,14 @@ Les contrôles actifs produisent des pings comme les tâches planifiées : un se
 
 `LiveUpdatePublisher` repère, à chaque `flush`, un changement sur un moniteur, un ping, un incident ou une maintenance. Il envoie alors une seule mise à jour Mercure privée par Messenger, pour ne pas ralentir la réception d'un ping. Les pages abonnées (`turbo_stream_from`) la reçoivent et se rechargent par morphing Turbo, en gardant la position de défilement.
 
+**Secret TOTP**
+
+Le secret est chiffré par `SecretCipher` avant d'être enregistré. `UserTotpSecretListener` le déchiffre au chargement d'un compte et le garde en mémoire seulement. La migration qui a introduit le chiffrement chiffre aussi les secrets existants.
+
+**Maintenances récurrentes**
+
+`MaintenanceWindow::findOccurrenceStart` calcule l'occurrence en cours ou la prochaine dans le fuseau d'affichage. Le dépôt présélectionne les plages en SQL, puis filtre les plages récurrentes en PHP.
+
 **Journal des actions**
 
 `AuditLogger` enregistre l'action, l'auteur (utilisateur connecté, `console` ou `anonyme`) et l'adresse IP. Il est appelé par les contrôleurs, les commandes et `LoginAuditSubscriber`. Un échec d'écriture est journalisé sans interrompre l'action.
@@ -111,8 +121,8 @@ Les contrôles actifs produisent des pings comme les tâches planifiées : un se
 | `monitor` | Configuration, groupe, état courant et version |
 | `ping` | Signaux reçus et résultats de contrôles, index `(monitor_id, received_at)` et `(received_at)` |
 | `incident` | Pannes et date de dernière alerte, index `(monitor_id, resolved_at)` |
-| `maintenance_window` | Plages de maintenance, index `(starts_at, ends_at)` |
-| `app_user` | Comptes, secret TOTP |
+| `maintenance_window` | Plages de maintenance et répétition, index `(starts_at, ends_at)` |
+| `app_user` | Comptes, secret TOTP chiffré, empreintes des codes de secours |
 | `api_token` | Jetons d'API (empreinte SHA-256, dernière utilisation) |
 | `audit_log` | Journal des actions, index `(occurred_at)` |
 | `messenger_messages` | Files Messenger |

@@ -4,33 +4,55 @@ namespace App\Repository;
 
 use App\Entity\MaintenanceWindow;
 use App\Entity\Monitor;
+use App\Enum\MaintenanceRecurrence;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
+ * Les plages récurrentes sont filtrées en PHP : leurs occurrences dépendent du fuseau d'affichage.
+ *
  * @extends ServiceEntityRepository<MaintenanceWindow>
  */
 class MaintenanceWindowRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $pRegistry)
-    {
+    private \DateTimeZone $aTimezone;
+
+    public function __construct(
+        ManagerRegistry $pRegistry,
+        #[Autowire(param: 'app.display_timezone')]
+        string $pDisplayTimezone,
+    ) {
         parent::__construct($pRegistry, MaintenanceWindow::class);
+        $this->aTimezone = new \DateTimeZone($pDisplayTimezone);
     }
 
     public function isActiveFor(Monitor $pMonitor, \DateTimeImmutable $pNow): bool
     {
-        $vCount = (int) $this->createQueryBuilder('w')
-            ->select('COUNT(w.id)')
-            ->where('w.startsAt <= :now')
-            ->andWhere('w.endsAt > :now')
+        /** @var list<MaintenanceWindow> $vWindows */
+        $vWindows = $this->createStartedQuery($pNow)
             ->andWhere('(w.monitor IS NULL OR w.monitor = :monitor)')
-            ->setParameter('now', $pNow)
             ->setParameter('monitor', $pMonitor)
             ->getQuery()
-            ->getSingleScalarResult();
-        $rActive = $vCount > 0;
+            ->getResult();
+
+        $rActive = [] !== array_filter($vWindows, fn (MaintenanceWindow $pWindow): bool => $pWindow->isActive($pNow, $this->aTimezone));
 
         return $rActive;
+    }
+
+    /**
+     * @return list<MaintenanceWindow>
+     */
+    public function findActive(\DateTimeImmutable $pNow): array
+    {
+        /** @var list<MaintenanceWindow> $vWindows */
+        $vWindows = $this->createStartedQuery($pNow)->getQuery()->getResult();
+
+        $rWindows = array_values(array_filter($vWindows, fn (MaintenanceWindow $pWindow): bool => $pWindow->isActive($pNow, $this->aTimezone)));
+
+        return $rWindows;
     }
 
     /**
@@ -40,13 +62,27 @@ class MaintenanceWindowRepository extends ServiceEntityRepository
      */
     public function findNotEnded(\DateTimeImmutable $pNow): array
     {
+        /** @var list<MaintenanceWindow> $rWindows */
         $rWindows = $this->createQueryBuilder('w')
-            ->where('w.endsAt > :now')
+            ->where('w.endsAt > :now OR w.recurrence <> :none')
             ->setParameter('now', $pNow)
-            ->orderBy('w.startsAt', 'ASC')
+            ->setParameter('none', MaintenanceRecurrence::None)
             ->getQuery()
             ->getResult();
+        usort($rWindows, fn (MaintenanceWindow $pLeft, MaintenanceWindow $pRight): int => $pLeft->findOccurrenceStart($pNow, $this->aTimezone)
+            <=> $pRight->findOccurrenceStart($pNow, $this->aTimezone));
 
         return $rWindows;
+    }
+
+    private function createStartedQuery(\DateTimeImmutable $pNow): QueryBuilder
+    {
+        $rQueryBuilder = $this->createQueryBuilder('w')
+            ->where('w.startsAt <= :now')
+            ->andWhere('(w.endsAt > :now OR w.recurrence <> :none)')
+            ->setParameter('now', $pNow)
+            ->setParameter('none', MaintenanceRecurrence::None);
+
+        return $rQueryBuilder;
     }
 }

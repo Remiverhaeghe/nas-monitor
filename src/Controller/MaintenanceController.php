@@ -6,6 +6,7 @@ use App\Audit\AuditLogger;
 use App\Dto\MaintenanceInput;
 use App\Entity\MaintenanceWindow;
 use App\Enum\AuditAction;
+use App\Enum\MaintenanceRecurrence;
 use App\Form\MaintenanceFormType;
 use App\Repository\MaintenanceWindowRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -50,6 +51,7 @@ final class MaintenanceController extends AbstractController
                 $vInput->startsAt ?? $vNow,
                 $vInput->endsAt ?? $vNow,
                 (string) $vInput->reason,
+                $vInput->recurrence ?? MaintenanceRecurrence::None,
             );
             $this->aEntityManager->persist($vWindow);
             $this->aEntityManager->flush();
@@ -63,8 +65,15 @@ final class MaintenanceController extends AbstractController
 
         $rResponse = $this->render('maintenance/index.html.twig', [
             'form' => $vForm,
-            'windows' => $this->aMaintenanceWindowRepository->findNotEnded($vNow),
-            'now' => $vNow,
+            'rows' => array_map(
+                fn (MaintenanceWindow $pWindow): array => [
+                    'window' => $pWindow,
+                    'schedule' => $pWindow->describeSchedule($this->timezone()),
+                    'active' => $pWindow->isActive($vNow, $this->timezone()),
+                    'next_start' => $pWindow->findOccurrenceStart($vNow, $this->timezone()),
+                ],
+                $this->aMaintenanceWindowRepository->findNotEnded($vNow),
+            ),
         ]);
 
         return $rResponse;
@@ -88,15 +97,20 @@ final class MaintenanceController extends AbstractController
 
     private function describe(MaintenanceWindow $pWindow): string
     {
-        $vTimezone = new \DateTimeZone($this->aDisplayTimezone);
         $rDescription = \sprintf(
-            '%s, du %s au %s : %s',
+            '%s, %s : %s',
             $pWindow->getMonitor()?->getName() ?? 'tous les moniteurs',
-            $pWindow->getStartsAt()->setTimezone($vTimezone)->format('d/m/Y H:i'),
-            $pWindow->getEndsAt()->setTimezone($vTimezone)->format('d/m/Y H:i'),
+            $pWindow->describeSchedule($this->timezone()),
             $pWindow->getReason(),
         );
 
         return $rDescription;
+    }
+
+    private function timezone(): \DateTimeZone
+    {
+        $rTimezone = new \DateTimeZone($this->aDisplayTimezone);
+
+        return $rTimezone;
     }
 }
