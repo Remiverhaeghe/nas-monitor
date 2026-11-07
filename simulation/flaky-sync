@@ -1,0 +1,20 @@
+#!/bin/sh
+# Synchronisation simulée qui échoue dans FAIL_PERCENT % des cas
+set -u
+
+vStart=$(date +%s)
+sleep $(( $(od -An -N1 -tu1 /dev/urandom) % 5 + 1 ))
+vDurationMs=$(( ($(date +%s) - vStart) * 1000 ))
+
+if [ $(( $(od -An -N1 -tu1 /dev/urandom) % 100 )) -lt "${FAIL_PERCENT:-30}" ]; then
+    vSuffix=/fail
+    vMessage="Destination injoignable"
+else
+    vSuffix=
+    vMessage="Synchronisation terminée"
+fi
+
+vPayload=$(jq -cn --argjson duration "$vDurationMs" --arg message "$vMessage" '{duration_ms: $duration, message: $message}')
+curl -fsS -m 10 --retry 3 -X POST -H 'Content-Type: application/json' -d "$vPayload" "$PING_URL$vSuffix" > /dev/null \
+    || echo "Ping impossible" >&2
+echo "$vMessage"

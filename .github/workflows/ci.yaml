@@ -7,6 +7,9 @@ on:
       - main
   pull_request: ~
   workflow_dispatch: ~
+  # Reconstruit l'image chaque jour pour détecter une version de PHP ou une dépendance vulnérable
+  schedule:
+    - cron: '0 5 * * *'
 
 permissions:
   contents: read
@@ -43,6 +46,16 @@ jobs:
         run: docker compose up --wait --no-build
       - name: Check HTTPS reachability
         run: curl -v --insecure --fail-with-body https://localhost/login
+      - name: PHP is on the latest patch release
+        run: |
+          vVersion=$(docker compose exec -T php php -r 'echo PHP_VERSION;')
+          vBranch=$(echo "$vVersion" | cut -d. -f1,2)
+          vLatest=$(curl -fsS "https://www.php.net/releases/?json&version=$vBranch" | jq -r .version)
+          echo "PHP installé : $vVersion, dernière version $vBranch : $vLatest"
+          if [ "$vVersion" != "$vLatest" ]; then
+            echo "::error::PHP $vVersion n'est pas à jour, $vLatest est disponible"
+            exit 1
+          fi
       - name: Security audit of dependencies
         run: docker compose exec -T php composer audit
       - name: Lint Twig, YAML and container

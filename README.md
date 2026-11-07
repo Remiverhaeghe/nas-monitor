@@ -71,6 +71,7 @@ Les valeurs propres à une installation vont dans `.env.local`, non versionné.
 | [docs/fonctionnalites.md](docs/fonctionnalites.md) | Statuts, incidents, écrans et commandes |
 | [docs/architecture.md](docs/architecture.md) | Organisation du code et flux principaux |
 | [docs/securite.md](docs/securite.md) | Protections en place |
+| [docs/simulation.md](docs/simulation.md) | Simulation locale du NAS avec tâches de sauvegarde |
 | [CHANGELOG.md](CHANGELOG.md) | Évolutions |
 
 ## Licence

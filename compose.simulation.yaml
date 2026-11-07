@@ -1,0 +1,47 @@
+---
+# Simulation locale du NAS : à combiner avec compose.yaml et compose.prod.yaml (voir docs/simulation.md)
+x-alert-env: &alert-env
+  MAILER_DSN: smtp://mailer:1025
+  ALERT_EMAIL_FROM: nas-monitor@simulation.local
+  ALERT_EMAIL_TO: admin@simulation.local
+
+services:
+  php:
+    environment: *alert-env
+
+  worker:
+    environment: *alert-env
+
+  mailer:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  backup:
+    build: ./simulation
+    profiles: [jobs]
+    command: ["run-every", "120", "backup"]
+    restart: unless-stopped
+    environment:
+      PING_URL: http://php/ping/${PING_TOKEN_BACKUP:-}
+      RESTIC_REPOSITORY: /repository
+      RESTIC_PASSWORD: simulation
+    volumes:
+      - backup_source:/source
+      - backup_repository:/repository
+
+  sync:
+    build: ./simulation
+    profiles: [jobs]
+    command: ["run-every", "60", "flaky-sync"]
+    restart: unless-stopped
+    environment:
+      PING_URL: http://php/ping/${PING_TOKEN_SYNC:-}
+      FAIL_PERCENT: 30
+
+volumes:
+  backup_source:
+  backup_repository:
