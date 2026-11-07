@@ -31,6 +31,9 @@
             </header>
         {% endif %}
         <main>
+            {% for message in app.flashes('success') %}
+                <p class="flash">{{ message }}</p>
+            {% endfor %}
             {% block body %}{% endblock %}
         </main>
     </body>

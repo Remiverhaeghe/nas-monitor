@@ -3,7 +3,10 @@
 {% block title %}Tableau de bord - nas-monitor{% endblock %}
 
 {% block body %}
-    <h1>Moniteurs</h1>
+    <div class="title-bar">
+        <h1>Moniteurs</h1>
+        <a class="button" href="{{ path('app_monitor_new') }}">Nouveau moniteur</a>
+    </div>
 
     <ul class="summary">
         {% for status in enum('App\\Enum\\MonitorStatus').cases() %}
@@ -12,7 +15,7 @@
     </ul>
 
     {% if monitors is empty %}
-        <p class="muted">Aucun moniteur pour l'instant. Création en ligne de commande : <code>bin/console app:monitor:create</code></p>
+        <p class="muted">Aucun moniteur pour l'instant.</p>
     {% else %}
         <div class="table-wrap">
             <table>

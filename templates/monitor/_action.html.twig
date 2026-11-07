@@ -1,0 +1,4 @@
+<form method="post" action="{{ path(route, {id: monitor.id}) }}"{% if confirm is defined %} data-controller="confirm" data-confirm-message-value="{{ confirm }}" data-action="submit->confirm#submit"{% endif %}>
+    <input type="hidden" name="_token" value="{{ csrf_token(constant('App\\Controller\\MonitorController::CSRF_TOKEN_ID')) }}">
+    <button type="submit"{% if danger is defined and danger %} class="danger"{% endif %}>{{ label }}</button>
+</form>
