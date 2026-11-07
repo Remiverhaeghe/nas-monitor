@@ -7,7 +7,7 @@
     <p class="muted">Pendant une maintenance, les statuts et les incidents sont toujours enregistrés, mais aucune alerte n'est envoyée. Une panne encore en cours à la fin de la plage est signalée dans la minute.</p>
 
     <h2>En cours et à venir</h2>
-    {% if windows is empty %}
+    {% if rows is empty %}
         <p class="muted">Aucune maintenance planifiée.</p>
     {% else %}
         <div class="table-wrap">
@@ -15,21 +15,20 @@
                 <thead>
                     <tr>
                         <th>Moniteur</th>
-                        <th>Début</th>
-                        <th>Fin</th>
+                        <th>Période</th>
                         <th>Motif</th>
                         <th>État</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for window in windows %}
+                    {% for row in rows %}
+                        {% set window = row.window %}
                         <tr>
                             <td>{{ window.monitor ? window.monitor.name : 'Tous' }}</td>
-                            <td>{{ window.startsAt|date }}</td>
-                            <td>{{ window.endsAt|date }}</td>
+                            <td class="wrap">{{ row.schedule|capitalize }}</td>
                             <td class="wrap">{{ window.reason }}</td>
-                            <td>{{ window.active(now) ? 'En cours' : 'À venir' }}</td>
+                            <td>{{ row.active ? 'En cours' : 'Prochaine le ' ~ row.next_start|date }}</td>
                             <td>
                                 <form method="post" action="{{ path('app_maintenance_delete', {id: window.id}) }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token(constant('App\\Controller\\MaintenanceController::CSRF_TOKEN_ID')) }}">

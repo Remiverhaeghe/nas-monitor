@@ -5,6 +5,8 @@ namespace App\Command;
 use App\Audit\AuditLogger;
 use App\Enum\AuditAction;
 use App\Repository\UserRepository;
+use App\Security\BackupCodeGenerator;
+use App\Security\SecretCipher;
 use Doctrine\ORM\EntityManagerInterface;
 use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
 use Symfony\Component\Console\Attribute\Argument;
@@ -23,6 +25,7 @@ final class EnableTotpCommand
         private readonly TotpAuthenticatorInterface $aTotpAuthenticator,
         private readonly EntityManagerInterface $aEntityManager,
         private readonly AuditLogger $aAuditLogger,
+        private readonly SecretCipher $aSecretCipher,
     ) {
     }
 
@@ -39,7 +42,7 @@ final class EnableTotpCommand
         }
 
         $vSecret = $this->aTotpAuthenticator->generateSecret();
-        $vUser->setTotpSecret($vSecret);
+        $vUser->enableTotp($vSecret, $this->aSecretCipher->encrypt($vSecret));
 
         $pIo->writeln('Ajoute ce compte dans ton application d\'authentification (saisie manuelle) :');
         $pIo->writeln('  Clé : '.$vSecret);
@@ -52,9 +55,13 @@ final class EnableTotpCommand
             return Command::FAILURE;
         }
 
+        $vBackupCodes = BackupCodeGenerator::generate();
+        $vUser->replaceBackupCodes($vBackupCodes);
         $this->aEntityManager->flush();
         $this->aAuditLogger->log(AuditAction::TotpEnable, 'Compte '.$vUser->getEmail());
         $pIo->success('Double authentification activée pour '.$vUser->getEmail().'.');
+        $pIo->writeln('Codes de secours, à usage unique, à conserver hors du téléphone (ils ne seront plus affichés) :');
+        $pIo->listing($vBackupCodes);
 
         return Command::SUCCESS;
     }

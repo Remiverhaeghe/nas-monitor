@@ -5,14 +5,14 @@
 {% block body %}
     <form class="login" method="post" action="{{ checkPathUrl ? checkPathUrl : path(checkPathRoute) }}">
         <h1>Code de vérification</h1>
-        <p class="muted">Saisis le code à six chiffres affiché par ton application d'authentification.</p>
+        <p class="muted">Saisis le code à six chiffres affiché par ton application d'authentification, ou l'un de tes codes de secours.</p>
 
         {% if authenticationError %}
             <p class="error">{{ authenticationError|trans(authenticationErrorData, 'SchebTwoFactorBundle') }}</p>
         {% endif %}
 
         <label for="_auth_code">Code</label>
-        <input type="text" id="_auth_code" name="{{ authCodeParameterName }}" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" required autofocus>
+        <input type="text" id="_auth_code" name="{{ authCodeParameterName }}" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" required autofocus>
 
         {% if isCsrfProtectionEnabled %}
             <input type="hidden" name="{{ csrfParameterName }}" value="{{ csrf_token(csrfTokenId) }}">

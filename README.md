@@ -52,6 +52,12 @@ curl -H "Authorization: Bearer <jeton>" https://<hôte>/api/monitors
 ```bash
 docker compose exec php bin/phpunit
 docker compose exec -e XDEBUG_MODE=coverage php bin/phpunit --coverage-text --only-summary-for-coverage-text
+docker compose exec -e XDEBUG_MODE=coverage php vendor/bin/infection --threads=1
+```
+
+Infection modifie le code métier (`src/Entity`, `src/Service`, `src/Check`, `src/Chart`, `src/Report`, `src/Security`) et vérifie que les tests détectent chaque modification ; la CI exige 85 %.
+
+```bash
 docker compose exec php vendor/bin/phpstan analyse
 docker compose exec php vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
@@ -76,6 +82,7 @@ docker compose exec php bin/console doctrine:migrations:migrate --env=test --no-
 | `AUDIT_RETENTION_DAYS` | Durée de conservation du journal des actions (365 par défaut) |
 | `TLS_WARNING_DAYS` | Délai d'alerte avant expiration d'un certificat (14 par défaut) |
 | `TRUSTED_PROXIES` | Adresses des proxys inverses de confiance, vide par défaut |
+| `TOTP_ENCRYPTION_KEY` | Clé de chiffrement des secrets TOTP, 32 octets en base64, obligatoire en production : `php -r 'echo base64_encode(random_bytes(32)), PHP_EOL;'` |
 | `ANOMALY_SIZE_DROP_PERCENT`, `ANOMALY_DURATION_FACTOR` | Seuils de détection d'un résultat anormal (50 % et 3 par défaut) |
 | `ALERT_REMINDER_HOURS` | Rappel d'une panne toujours en cours (6 h par défaut, 0 pour désactiver) |
 | `DB_BACKUP_PING_URL`, `DB_BACKUP_INTERVAL_SECONDS`, `DB_BACKUP_KEEP` | Sauvegarde de la base en production, voir [docs/sauvegarde.md](docs/sauvegarde.md) |

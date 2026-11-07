@@ -13,6 +13,7 @@ use App\Repository\PingRepository;
 use App\Service\AvailabilityCalculator;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -29,6 +30,8 @@ final class DashboardController extends AbstractController
         private readonly MaintenanceWindowRepository $aMaintenanceWindowRepository,
         private readonly ClockInterface $aClock,
         private readonly AvailabilityCalculator $aAvailabilityCalculator,
+        #[Autowire(param: 'app.display_timezone')]
+        private readonly string $aDisplayTimezone,
     ) {
     }
 
@@ -52,10 +55,14 @@ final class DashboardController extends AbstractController
             'availability' => $this->aAvailabilityCalculator->compute($vMonitors, $vNow->modify('-7 days'), $vNow),
             'counts' => $vCounts,
             'open_incidents' => $this->aIncidentRepository->findOpenIndexedByMonitorId(),
-            'active_maintenances' => array_values(array_filter(
-                $this->aMaintenanceWindowRepository->findNotEnded($vNow),
-                static fn (MaintenanceWindow $pWindow): bool => $pWindow->isActive($vNow),
-            )),
+            'active_maintenances' => array_map(
+                fn (MaintenanceWindow $pWindow): array => [
+                    'window' => $pWindow,
+                    'ends_at' => $pWindow->findOccurrenceStart($vNow, new \DateTimeZone($this->aDisplayTimezone))
+                        ?->modify(\sprintf('+%d seconds', $pWindow->getDurationSeconds())),
+                ],
+                $this->aMaintenanceWindowRepository->findActive($vNow),
+            ),
         ]);
 
         return $rResponse;

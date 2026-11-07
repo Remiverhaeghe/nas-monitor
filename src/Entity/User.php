@@ -3,7 +3,9 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Scheb\TwoFactorBundle\Model\BackupCodeInterface;
 use Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration;
 use Scheb\TwoFactorBundle\Model\Totp\TotpConfigurationInterface;
 use Scheb\TwoFactorBundle\Model\Totp\TwoFactorInterface;
@@ -15,7 +17,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'app_user')]
 #[UniqueEntity('email')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFactorInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFactorInterface, BackupCodeInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -36,8 +38,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
     #[ORM\Column]
     private string $password = '';
 
-    #[ORM\Column(length: 100, nullable: true)]
+    /**
+     * Chiffré par SecretCipher ; la valeur en clair n'existe qu'en mémoire, renseignée au chargement.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $totpSecret = null;
+
+    private ?string $plainTotpSecret = null;
+
+    /**
+     * @var list<string>
+     */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $backupCodeHashes = [];
 
     public function __construct(string $pEmail)
     {
@@ -83,9 +96,58 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
         $this->password = $pHashedPassword;
     }
 
-    public function setTotpSecret(?string $pTotpSecret): void
+    public function enableTotp(string $pPlainSecret, string $pEncryptedSecret): void
     {
-        $this->totpSecret = $pTotpSecret;
+        $this->plainTotpSecret = $pPlainSecret;
+        $this->totpSecret = $pEncryptedSecret;
+    }
+
+    public function disableTotp(): void
+    {
+        $this->plainTotpSecret = null;
+        $this->totpSecret = null;
+        $this->backupCodeHashes = [];
+    }
+
+    public function getEncryptedTotpSecret(): ?string
+    {
+        return $this->totpSecret;
+    }
+
+    public function revealTotpSecret(string $pPlainSecret): void
+    {
+        $this->plainTotpSecret = $pPlainSecret;
+    }
+
+    /**
+     * Seules les empreintes sont conservées : les codes en clair ne sont affichés qu'à leur création.
+     *
+     * @param list<string> $pCodes
+     */
+    public function replaceBackupCodes(array $pCodes): void
+    {
+        $this->backupCodeHashes = array_map(self::hashBackupCode(...), $pCodes);
+    }
+
+    public function countBackupCodes(): int
+    {
+        return \count($this->backupCodeHashes);
+    }
+
+    public function isBackupCode(string $pCode): bool
+    {
+        $rValid = \in_array(self::hashBackupCode($pCode), $this->backupCodeHashes, true);
+
+        return $rValid;
+    }
+
+    public function invalidateBackupCode(string $pCode): void
+    {
+        $vHash = self::hashBackupCode($pCode);
+        $this->backupCodeHashes = array_values(array_filter(
+            $this->backupCodeHashes,
+            static fn (string $pHash): bool => $pHash !== $vHash,
+        ));
     }
 
     public function isTotpAuthenticationEnabled(): bool
@@ -103,9 +165,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
         if (null === $this->totpSecret) {
             return null;
         }
+        if (null === $this->plainTotpSecret) {
+            // Secret illisible (clé de chiffrement changée) : la connexion échoue plutôt que de contourner le second facteur
+            throw new \LogicException('Secret TOTP non déchiffré pour '.$this->email);
+        }
 
-        $rConfiguration = new TotpConfiguration($this->totpSecret, TotpConfiguration::ALGORITHM_SHA1, 30, 6);
+        $rConfiguration = new TotpConfiguration($this->plainTotpSecret, TotpConfiguration::ALGORITHM_SHA1, 30, 6);
 
         return $rConfiguration;
+    }
+
+    /**
+     * Les codes de 64 bits rendent une empreinte SHA-256 sans sel suffisante, comme pour les jetons.
+     */
+    private static function hashBackupCode(string $pCode): string
+    {
+        $rHash = hash('sha256', strtolower(str_replace(['-', ' '], '', $pCode)));
+
+        return $rHash;
     }
 }
