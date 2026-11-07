@@ -1,0 +1,17 @@
+framework:
+    cache:
+        pools:
+            cache.ping_limiter:
+                adapter: cache.app
+    rate_limiter:
+        ping:
+            policy: sliding_window
+            limit: 60
+            interval: '1 minute'
+            cache_pool: cache.ping_limiter
+
+when@test:
+    framework:
+        rate_limiter:
+            ping:
+                limit: 5
