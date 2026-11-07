@@ -1,0 +1,85 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ monitor.name }} - nas-monitor{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('app_dashboard') }}">Tous les moniteurs</a></p>
+    <h1>{{ monitor.name }}</h1>
+
+    <dl class="details">
+        <dt>Statut</dt>
+        <dd>{{ include('_status.html.twig', {status: monitor.status}) }}</dd>
+        <dt>Type</dt>
+        <dd>{{ monitor.type.value }}</dd>
+        {% if monitor.target %}
+            <dt>Cible</dt>
+            <dd>{{ monitor.target }}</dd>
+        {% endif %}
+        <dt>Intervalle attendu</dt>
+        <dd>{{ (monitor.expectedIntervalSeconds / 60)|round }} min</dd>
+        <dt>Délai de grâce</dt>
+        <dd>{{ (monitor.graceSeconds / 60)|round }} min</dd>
+        <dt>Dernier ping</dt>
+        <dd>{{ monitor.lastPingAt ? monitor.lastPingAt|date : 'aucun' }}</dd>
+        <dt>Créé le</dt>
+        <dd>{{ monitor.createdAt|date }}</dd>
+    </dl>
+
+    <h2>Incidents</h2>
+    {% if incidents is empty %}
+        <p class="muted">Aucun incident.</p>
+    {% else %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Début</th>
+                        <th>Fin</th>
+                        <th>Cause</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for incident in incidents %}
+                        <tr>
+                            <td>{{ incident.startedAt|date }}</td>
+                            <td>{{ incident.resolvedAt ? incident.resolvedAt|date : 'en cours' }}</td>
+                            <td>{{ incident.cause.label }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <h2>Derniers pings</h2>
+    {% if pings is empty %}
+        <p class="muted">Aucun ping reçu.</p>
+    {% else %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Reçu le</th>
+                        <th>Type</th>
+                        <th>Durée</th>
+                        <th>Taille</th>
+                        <th>Message</th>
+                        <th>Origine</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ping in pings %}
+                        <tr>
+                            <td>{{ ping.receivedAt|date('d/m/Y H:i:s') }}</td>
+                            <td>{{ ping.kind.label }}</td>
+                            <td>{{ ping.durationMs is not null ? (ping.durationMs / 1000)|number_format(1, ',', ' ') ~ ' s' : '-' }}</td>
+                            <td>{{ ping.sizeBytes is not null ? (ping.sizeBytes / 1048576)|number_format(1, ',', ' ') ~ ' Mo' : '-' }}</td>
+                            <td class="wrap">{{ ping.message ?? '-' }}</td>
+                            <td>{{ ping.sourceIp ?? '-' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+{% endblock %}
