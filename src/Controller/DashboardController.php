@@ -3,11 +3,14 @@
 namespace App\Controller;
 
 use App\Chart\TrendChartFactory;
+use App\Entity\MaintenanceWindow;
 use App\Entity\Monitor;
 use App\Enum\MonitorStatus;
 use App\Repository\IncidentRepository;
+use App\Repository\MaintenanceWindowRepository;
 use App\Repository\MonitorRepository;
 use App\Repository\PingRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,12 +25,15 @@ final class DashboardController extends AbstractController
         private readonly IncidentRepository $aIncidentRepository,
         private readonly PingRepository $aPingRepository,
         private readonly TrendChartFactory $aTrendChartFactory,
+        private readonly MaintenanceWindowRepository $aMaintenanceWindowRepository,
+        private readonly ClockInterface $aClock,
     ) {
     }
 
     #[Route('/', name: 'app_dashboard', methods: ['GET'])]
     public function index(): Response
     {
+        $vNow = $this->aClock->now();
         $vMonitors = $this->aMonitorRepository->findAll();
         usort($vMonitors, static fn (Monitor $pLeft, Monitor $pRight): int => [$pLeft->getStatus()->severity(), $pLeft->getName()]
             <=> [$pRight->getStatus()->severity(), $pRight->getName()]);
@@ -44,6 +50,10 @@ final class DashboardController extends AbstractController
             'monitors' => $vMonitors,
             'counts' => $vCounts,
             'open_incidents' => $this->aIncidentRepository->findOpenIndexedByMonitorId(),
+            'active_maintenances' => array_values(array_filter(
+                $this->aMaintenanceWindowRepository->findNotEnded($vNow),
+                static fn (MaintenanceWindow $pWindow): bool => $pWindow->isActive($vNow),
+            )),
         ]);
 
         return $rResponse;

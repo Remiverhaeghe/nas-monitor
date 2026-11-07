@@ -8,6 +8,13 @@
         <a class="button" href="{{ path('app_monitor_new') }}">Nouveau moniteur</a>
     </div>
 
+    {% for window in active_maintenances %}
+        <p class="maintenance-banner">
+            Maintenance en cours jusqu'au {{ window.endsAt|date }}
+            ({{ window.monitor ? window.monitor.name : 'tous les moniteurs' }}) : {{ window.reason }}. Aucune alerte n'est envoyée.
+        </p>
+    {% endfor %}
+
     <ul class="summary">
         {% for status in enum('App\\Enum\\MonitorStatus').cases() %}
             <li>{{ include('_status.html.twig', {status: status}) }} {{ counts[status.value] }}</li>

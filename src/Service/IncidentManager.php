@@ -50,7 +50,9 @@ final class IncidentManager
             'monitor' => $pMonitor->getId(),
             'cause' => $vCause->value,
         ]);
-        $this->aAlertNotifier->sendDown($vIncident);
+        if ($this->aAlertNotifier->sendDown($vIncident)) {
+            $vIncident->markNotified($pNow);
+        }
     }
 
     private function resolve(Incident $pIncident, MonitorStatus $pStatus, \DateTimeImmutable $pNow): void

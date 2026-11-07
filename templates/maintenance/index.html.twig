@@ -1,0 +1,51 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Maintenances - nas-monitor{% endblock %}
+
+{% block body %}
+    <h1>Maintenances</h1>
+    <p class="muted">Pendant une maintenance, les statuts et les incidents sont toujours enregistrés, mais aucune alerte n'est envoyée. Une panne encore en cours à la fin de la plage est signalée dans la minute.</p>
+
+    <h2>En cours et à venir</h2>
+    {% if windows is empty %}
+        <p class="muted">Aucune maintenance planifiée.</p>
+    {% else %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Moniteur</th>
+                        <th>Début</th>
+                        <th>Fin</th>
+                        <th>Motif</th>
+                        <th>État</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for window in windows %}
+                        <tr>
+                            <td>{{ window.monitor ? window.monitor.name : 'Tous' }}</td>
+                            <td>{{ window.startsAt|date }}</td>
+                            <td>{{ window.endsAt|date }}</td>
+                            <td class="wrap">{{ window.reason }}</td>
+                            <td>{{ window.active(now) ? 'En cours' : 'À venir' }}</td>
+                            <td>
+                                <form method="post" action="{{ path('app_maintenance_delete', {id: window.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token(constant('App\\Controller\\MaintenanceController::CSRF_TOKEN_ID')) }}">
+                                    <button type="submit" class="danger">Supprimer</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <h2>Planifier une maintenance</h2>
+    {{ form_start(form, {attr: {class: 'stacked'}}) }}
+        {{ form_widget(form) }}
+        <button type="submit">Planifier</button>
+    {{ form_end(form) }}
+{% endblock %}

@@ -28,6 +28,12 @@ class Incident
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $resolvedAt = null;
 
+    /**
+     * Null tant qu'aucune alerte n'a pu partir, par exemple pendant une maintenance.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $lastNotifiedAt = null;
+
     public function __construct(Monitor $pMonitor, IncidentCause $pCause, \DateTimeImmutable $pStartedAt)
     {
         $this->monitor = $pMonitor;
@@ -38,6 +44,16 @@ class Incident
     public function resolve(\DateTimeImmutable $pResolvedAt): void
     {
         $this->resolvedAt = $pResolvedAt;
+    }
+
+    public function markNotified(\DateTimeImmutable $pNow): void
+    {
+        $this->lastNotifiedAt = $pNow;
+    }
+
+    public function getLastNotifiedAt(): ?\DateTimeImmutable
+    {
+        return $this->lastNotifiedAt;
     }
 
     public function isOpen(): bool

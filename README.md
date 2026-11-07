@@ -18,7 +18,7 @@ docker compose up --wait
 docker compose exec php bin/console app:user:create admin@exemple.fr
 ```
 
-L'application est disponible sur https://localhost (certificat local à accepter).
+L'application est disponible sur https://localhost (certificat local à accepter). Double authentification facultative : `bin/console app:user:totp-enable admin@exemple.fr`.
 
 La vérification planifiée et l'envoi des e-mails passent par un worker :
 
@@ -75,6 +75,8 @@ docker compose exec php bin/console doctrine:migrations:migrate --env=test --no-
 | `TLS_WARNING_DAYS` | Délai d'alerte avant expiration d'un certificat (14 par défaut) |
 | `TRUSTED_PROXIES` | Adresses des proxys inverses de confiance, vide par défaut |
 | `ANOMALY_SIZE_DROP_PERCENT`, `ANOMALY_DURATION_FACTOR` | Seuils de détection d'un résultat anormal (50 % et 3 par défaut) |
+| `ALERT_REMINDER_HOURS` | Rappel d'une panne toujours en cours (6 h par défaut, 0 pour désactiver) |
+| `DB_BACKUP_PING_URL`, `DB_BACKUP_INTERVAL_SECONDS`, `DB_BACKUP_KEEP` | Sauvegarde de la base en production, voir [docs/sauvegarde.md](docs/sauvegarde.md) |
 | `DATABASE_URL` | Connexion PostgreSQL, fournie par `compose.yaml` |
 
 Les valeurs propres à une installation vont dans `.env.local`, non versionné.
@@ -87,6 +89,7 @@ Les valeurs propres à une installation vont dans `.env.local`, non versionné.
 | [docs/architecture.md](docs/architecture.md) | Organisation du code et flux principaux |
 | [docs/securite.md](docs/securite.md) | Protections en place |
 | [docs/simulation.md](docs/simulation.md) | Simulation locale du NAS avec tâches de sauvegarde |
+| [docs/sauvegarde.md](docs/sauvegarde.md) | Sauvegarde et restauration de la base |
 | [CHANGELOG.md](CHANGELOG.md) | Évolutions |
 
 ## Licence

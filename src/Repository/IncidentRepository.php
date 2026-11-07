@@ -44,6 +44,31 @@ class IncidentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Incidents ouverts jamais signalés, ou signalés pour la dernière fois au plus tard à la date donnée.
+     *
+     * @return list<Incident>
+     */
+    public function findOpenToNotify(?\DateTimeImmutable $pNotifiedBefore): array
+    {
+        $vQueryBuilder = $this->createQueryBuilder('i')
+            ->join('i.monitor', 'm')
+            ->where('i.resolvedAt IS NULL')
+            ->andWhere('m.paused = false');
+
+        if (null === $pNotifiedBefore) {
+            $vQueryBuilder->andWhere('i.lastNotifiedAt IS NULL');
+        } else {
+            $vQueryBuilder
+                ->andWhere('(i.lastNotifiedAt IS NULL OR i.lastNotifiedAt <= :before)')
+                ->setParameter('before', $pNotifiedBefore);
+        }
+
+        $rIncidents = $vQueryBuilder->getQuery()->getResult();
+
+        return $rIncidents;
+    }
+
+    /**
      * @return list<Incident>
      */
     public function findLatestForMonitor(Monitor $pMonitor, int $pLimit): array

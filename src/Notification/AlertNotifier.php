@@ -5,6 +5,9 @@ namespace App\Notification;
 use App\Entity\Incident;
 use App\Entity\Monitor;
 use App\Enum\IncidentCause;
+use App\Repository\MaintenanceWindowRepository;
+use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -12,6 +15,7 @@ use Symfony\Component\Mime\Email;
 
 /**
  * Envoie les alertes sur le ou les canaux choisis pour le moniteur ; e-mails et ntfy partent par Messenger.
+ * Chaque méthode retourne faux si l'alerte n'est pas partie à cause d'une maintenance en cours.
  */
 final class AlertNotifier
 {
@@ -22,6 +26,9 @@ final class AlertNotifier
     public function __construct(
         private readonly MailerInterface $aMailer,
         private readonly MessageBusInterface $aMessageBus,
+        private readonly MaintenanceWindowRepository $aMaintenanceWindowRepository,
+        private readonly ClockInterface $aClock,
+        private readonly LoggerInterface $aLogger,
         #[Autowire(env: 'ALERT_EMAIL_FROM')]
         private readonly string $aFrom,
         #[Autowire(env: 'ALERT_EMAIL_TO')]
@@ -32,33 +39,51 @@ final class AlertNotifier
         $this->aTimezone = new \DateTimeZone($pDisplayTimezone);
     }
 
-    public function sendDown(Incident $pIncident): void
+    public function sendDown(Incident $pIncident): bool
     {
         $vMonitor = $pIncident->getMonitor();
-        $vCause = match ($pIncident->getCause()) {
-            IncidentCause::Missed => 'aucun signal reçu dans le délai prévu',
-            IncidentCause::Failed => 'le dernier contrôle a échoué',
-        };
 
-        $this->send(
+        $rSent = $this->send(
             $vMonitor,
             'En panne : '.$vMonitor->getName(),
             \sprintf(
                 "Le moniteur « %s » est en panne depuis le %s.\n\nCause : %s.\nDernier signal : %s.\n",
                 $vMonitor->getName(),
                 $this->format($pIncident->getStartedAt()),
-                $vCause,
+                $this->describeCause($pIncident),
                 null === $vMonitor->getLastPingAt() ? 'aucun' : $this->format($vMonitor->getLastPingAt()),
             ),
             true,
         );
+
+        return $rSent;
     }
 
-    public function sendRecovered(Incident $pIncident, \DateTimeImmutable $pNow): void
+    public function sendReminder(Incident $pIncident, \DateTimeImmutable $pNow): bool
     {
         $vMonitor = $pIncident->getMonitor();
 
-        $this->send(
+        $rSent = $this->send(
+            $vMonitor,
+            'Toujours en panne : '.$vMonitor->getName(),
+            \sprintf(
+                "Le moniteur « %s » est toujours en panne, depuis le %s (%d h).\n\nCause : %s.\n",
+                $vMonitor->getName(),
+                $this->format($pIncident->getStartedAt()),
+                intdiv($pIncident->getDurationSeconds($pNow), 3600),
+                $this->describeCause($pIncident),
+            ),
+            true,
+        );
+
+        return $rSent;
+    }
+
+    public function sendRecovered(Incident $pIncident, \DateTimeImmutable $pNow): bool
+    {
+        $vMonitor = $pIncident->getMonitor();
+
+        $rSent = $this->send(
             $vMonitor,
             'Rétabli : '.$vMonitor->getName(),
             \sprintf(
@@ -69,11 +94,13 @@ final class AlertNotifier
             ),
             false,
         );
+
+        return $rSent;
     }
 
-    public function sendAnomaly(Monitor $pMonitor, string $pAnomaly, \DateTimeImmutable $pReceivedAt): void
+    public function sendAnomaly(Monitor $pMonitor, string $pAnomaly, \DateTimeImmutable $pReceivedAt): bool
     {
-        $this->send(
+        $rSent = $this->send(
             $pMonitor,
             'Anomalie : '.$pMonitor->getName(),
             \sprintf(
@@ -84,12 +111,19 @@ final class AlertNotifier
             ),
             true,
         );
+
+        return $rSent;
     }
 
-    private function send(Monitor $pMonitor, string $pSubject, string $pBody, bool $pUrgent): void
+    private function send(Monitor $pMonitor, string $pSubject, string $pBody, bool $pUrgent): bool
     {
-        $vChannel = $pMonitor->getNotificationChannel();
+        if ($this->aMaintenanceWindowRepository->isActiveFor($pMonitor, $this->aClock->now())) {
+            $this->aLogger->info('Alerte « {subject} » retenue : maintenance en cours', ['subject' => $pSubject]);
 
+            return false;
+        }
+
+        $vChannel = $pMonitor->getNotificationChannel();
         if ($vChannel->includesEmail()) {
             $this->aMailer->send((new Email())
                 ->from($this->aFrom)
@@ -100,6 +134,18 @@ final class AlertNotifier
         if ($vChannel->includesNtfy()) {
             $this->aMessageBus->dispatch(new NtfyMessage($pSubject, $pBody, $pUrgent));
         }
+
+        return true;
+    }
+
+    private function describeCause(Incident $pIncident): string
+    {
+        $rCause = match ($pIncident->getCause()) {
+            IncidentCause::Missed => 'aucun signal reçu dans le délai prévu',
+            IncidentCause::Failed => 'le dernier contrôle a échoué',
+        };
+
+        return $rCause;
     }
 
     private function format(\DateTimeImmutable $pDate): string

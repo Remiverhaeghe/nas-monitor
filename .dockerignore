@@ -24,6 +24,7 @@
 .github/
 docs/
 simulation/
+docker/
 public/bundles/
 tests/
 var/

@@ -3,12 +3,14 @@
 namespace App\Tests\Service;
 
 use App\Entity\Incident;
+use App\Entity\MaintenanceWindow;
 use App\Entity\Monitor;
 use App\Entity\Ping;
 use App\Enum\IncidentCause;
 use App\Enum\MonitorStatus;
 use App\Enum\MonitorType;
 use App\Enum\PingKind;
+use App\Service\IncidentReminder;
 use App\Service\MonitorChecker;
 use App\Service\PingRecorder;
 use Doctrine\ORM\EntityManagerInterface;
@@ -88,6 +90,49 @@ class MonitorCheckerTest extends KernelTestCase
         self::assertFalse($vIncident->isOpen());
         self::assertQueuedEmailCount(2);
         self::assertEmailSubjectContains(self::getMailerMessage(1), 'Rétabli : Sauvegarde restic');
+    }
+
+    public function testNoAlertDuringMaintenanceThenAlertWhenItEnds(): void
+    {
+        $vMonitor = $this->createMonitorWithSuccessPing();
+        $this->aEntityManager->persist(new MaintenanceWindow($vMonitor, $this->aClock->now(), $this->aClock->now()->modify('+2 hours'), 'Mise à jour du NAS'));
+        $this->aEntityManager->flush();
+        $this->aClock->sleep(self::INTERVAL + self::GRACE + 1);
+
+        $this->check();
+
+        self::assertSame(MonitorStatus::Down, $vMonitor->getStatus());
+        self::assertNull($this->findOpenIncident($vMonitor)?->getLastNotifiedAt());
+        self::assertQueuedEmailCount(0);
+
+        $this->aClock->sleep(3600);
+        $this->remind();
+
+        self::assertQueuedEmailCount(1);
+        self::assertEmailSubjectContains(self::getMailerMessage(0), 'En panne : Sauvegarde restic');
+    }
+
+    public function testLongOutageIsRemindedEverySixHours(): void
+    {
+        $vMonitor = $this->createMonitorWithSuccessPing();
+        $this->aClock->sleep(self::INTERVAL + self::GRACE + 1);
+        $this->check();
+
+        $this->aClock->sleep(5 * 3600);
+        self::assertSame(0, $this->remind());
+
+        $this->aClock->sleep(3600);
+        self::assertSame(1, $this->remind());
+        self::assertQueuedEmailCount(2);
+        self::assertEmailSubjectContains(self::getMailerMessage(1), 'Toujours en panne : Sauvegarde restic');
+        self::assertSame(0, $this->remind());
+    }
+
+    private function remind(): int
+    {
+        $rCount = static::getContainer()->get(IncidentReminder::class)->remind();
+
+        return $rCount;
     }
 
     private function createMonitorWithSuccessPing(): Monitor
