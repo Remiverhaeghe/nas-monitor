@@ -2,6 +2,8 @@
 
 namespace App\Command;
 
+use App\Audit\AuditLogger;
+use App\Enum\AuditAction;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
@@ -20,6 +22,7 @@ final class EnableTotpCommand
         private readonly UserRepository $aUserRepository,
         private readonly TotpAuthenticatorInterface $aTotpAuthenticator,
         private readonly EntityManagerInterface $aEntityManager,
+        private readonly AuditLogger $aAuditLogger,
     ) {
     }
 
@@ -50,6 +53,7 @@ final class EnableTotpCommand
         }
 
         $this->aEntityManager->flush();
+        $this->aAuditLogger->log(AuditAction::TotpEnable, 'Compte '.$vUser->getEmail());
         $pIo->success('Double authentification activée pour '.$vUser->getEmail().'.');
 
         return Command::SUCCESS;

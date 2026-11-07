@@ -1,0 +1,37 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Journal - nas-monitor{% endblock %}
+
+{% block body %}
+    <h1>Journal des actions</h1>
+    <p class="muted">Connexions, échecs de connexion et modifications, du plus récent au plus ancien ({{ limit }} dernières entrées).</p>
+
+    {% if entries is empty %}
+        <p class="muted">Aucune action enregistrée.</p>
+    {% else %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Auteur</th>
+                        <th>Action</th>
+                        <th>Détail</th>
+                        <th>Adresse IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                        <tr>
+                            <td>{{ entry.occurredAt|date }}</td>
+                            <td>{{ entry.actor }}</td>
+                            <td>{{ entry.action.label }}</td>
+                            <td class="wrap">{{ entry.detail }}</td>
+                            <td>{{ entry.ipAddress ?? '-' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+{% endblock %}

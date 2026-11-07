@@ -72,6 +72,7 @@ final class MonitorApiController
             'id' => $pMonitor->getId(),
             'name' => $pMonitor->getName(),
             'type' => $pMonitor->getType()->value,
+            'group' => $pMonitor->getGroupName(),
             'target' => $pMonitor->getTarget(),
             'status' => $pMonitor->getStatus()->value,
             'paused' => $pMonitor->isPaused(),

@@ -22,6 +22,9 @@ final class MonitorInput
     #[Assert\Length(max: 255)]
     public ?string $target = null;
 
+    #[Assert\Length(max: 50)]
+    public ?string $groupName = null;
+
     #[Assert\NotNull]
     #[Assert\Range(min: 1, max: 44640)]
     public ?int $intervalMinutes = 60;
@@ -39,6 +42,7 @@ final class MonitorInput
         $rInput->name = $pMonitor->getName();
         $rInput->type = $pMonitor->getType();
         $rInput->target = $pMonitor->getTarget();
+        $rInput->groupName = $pMonitor->getGroupName();
         $rInput->intervalMinutes = intdiv($pMonitor->getExpectedIntervalSeconds(), 60);
         $rInput->graceMinutes = intdiv($pMonitor->getGraceSeconds(), 60);
         $rInput->notificationChannel = $pMonitor->getNotificationChannel();

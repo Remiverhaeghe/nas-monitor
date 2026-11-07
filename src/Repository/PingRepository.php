@@ -70,4 +70,29 @@ class PingRepository extends ServiceEntityRepository
 
         return $rCount;
     }
+
+    /**
+     * @return array<int, int> nombre d'anomalies par identifiant de moniteur
+     */
+    public function countAnomaliesByMonitorId(\DateTimeImmutable $pFrom, \DateTimeImmutable $pTo): array
+    {
+        /** @var list<array{monitorId: int, total: int}> $vRows */
+        $vRows = $this->createQueryBuilder('p')
+            ->select('IDENTITY(p.monitor) AS monitorId', 'COUNT(p.id) AS total')
+            ->where('p.anomaly IS NOT NULL')
+            ->andWhere('p.receivedAt >= :from')
+            ->andWhere('p.receivedAt < :to')
+            ->setParameter('from', $pFrom)
+            ->setParameter('to', $pTo)
+            ->groupBy('p.monitor')
+            ->getQuery()
+            ->getArrayResult();
+
+        $rCounts = [];
+        foreach ($vRows as $vRow) {
+            $rCounts[(int) $vRow['monitorId']] = (int) $vRow['total'];
+        }
+
+        return $rCounts;
+    }
 }

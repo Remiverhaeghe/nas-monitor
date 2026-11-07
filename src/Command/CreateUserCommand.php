@@ -2,7 +2,9 @@
 
 namespace App\Command;
 
+use App\Audit\AuditLogger;
 use App\Entity\User;
+use App\Enum\AuditAction;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -20,6 +22,7 @@ final class CreateUserCommand
         private readonly EntityManagerInterface $aEntityManager,
         private readonly UserPasswordHasherInterface $aPasswordHasher,
         private readonly ValidatorInterface $aValidator,
+        private readonly AuditLogger $aAuditLogger,
     ) {
     }
 
@@ -55,6 +58,7 @@ final class CreateUserCommand
         $this->aEntityManager->persist($vUser);
         $this->aEntityManager->flush();
 
+        $this->aAuditLogger->log(AuditAction::UserCreate, 'Compte '.$vUser->getEmail());
         $pIo->success(\sprintf('Compte %s créé.', $vUser->getEmail()));
 
         return Command::SUCCESS;

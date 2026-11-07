@@ -56,4 +56,37 @@ class MonitorRepository extends ServiceEntityRepository
 
         return $rMonitors;
     }
+
+    /**
+     * Groupes par ordre alphabétique, moniteurs sans groupe en dernier ; dans un groupe, du plus grave au moins grave.
+     *
+     * @return list<array{name: ?string, monitors: list<Monitor>}>
+     */
+    public function findAllGrouped(): array
+    {
+        $vMonitors = $this->findAll();
+        usort($vMonitors, static fn (Monitor $pLeft, Monitor $pRight): int => [
+            null === $pLeft->getGroupName(),
+            mb_strtolower((string) $pLeft->getGroupName()),
+            $pLeft->getStatus()->severity(),
+            $pLeft->getName(),
+        ] <=> [
+            null === $pRight->getGroupName(),
+            mb_strtolower((string) $pRight->getGroupName()),
+            $pRight->getStatus()->severity(),
+            $pRight->getName(),
+        ]);
+
+        $rGroups = [];
+        foreach ($vMonitors as $vMonitor) {
+            $vLast = array_key_last($rGroups);
+            if (null === $vLast || $rGroups[$vLast]['name'] !== $vMonitor->getGroupName()) {
+                $rGroups[] = ['name' => $vMonitor->getGroupName(), 'monitors' => []];
+                $vLast = array_key_last($rGroups);
+            }
+            $rGroups[$vLast]['monitors'][] = $vMonitor;
+        }
+
+        return $rGroups;
+    }
 }

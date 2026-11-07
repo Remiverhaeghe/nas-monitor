@@ -10,6 +10,7 @@ use App\Repository\IncidentRepository;
 use App\Repository\MaintenanceWindowRepository;
 use App\Repository\MonitorRepository;
 use App\Repository\PingRepository;
+use App\Service\AvailabilityCalculator;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,6 +28,7 @@ final class DashboardController extends AbstractController
         private readonly TrendChartFactory $aTrendChartFactory,
         private readonly MaintenanceWindowRepository $aMaintenanceWindowRepository,
         private readonly ClockInterface $aClock,
+        private readonly AvailabilityCalculator $aAvailabilityCalculator,
     ) {
     }
 
@@ -34,9 +36,8 @@ final class DashboardController extends AbstractController
     public function index(): Response
     {
         $vNow = $this->aClock->now();
-        $vMonitors = $this->aMonitorRepository->findAll();
-        usort($vMonitors, static fn (Monitor $pLeft, Monitor $pRight): int => [$pLeft->getStatus()->severity(), $pLeft->getName()]
-            <=> [$pRight->getStatus()->severity(), $pRight->getName()]);
+        $vGroups = $this->aMonitorRepository->findAllGrouped();
+        $vMonitors = array_merge(...array_column($vGroups, 'monitors'));
 
         $vCounts = [];
         foreach (MonitorStatus::cases() as $vStatus) {
@@ -47,7 +48,8 @@ final class DashboardController extends AbstractController
         }
 
         $rResponse = $this->render('dashboard/index.html.twig', [
-            'monitors' => $vMonitors,
+            'groups' => $vGroups,
+            'availability' => $this->aAvailabilityCalculator->compute($vMonitors, $vNow->modify('-7 days'), $vNow),
             'counts' => $vCounts,
             'open_incidents' => $this->aIncidentRepository->findOpenIndexedByMonitorId(),
             'active_maintenances' => array_values(array_filter(

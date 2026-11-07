@@ -122,6 +122,11 @@ th {
     font-weight: 600;
 }
 
+.group-row th {
+    color: var(--text);
+    background: var(--bg);
+}
+
 .status {
     display: inline-flex;
     align-items: center;

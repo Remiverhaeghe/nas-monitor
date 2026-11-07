@@ -112,6 +112,21 @@ class DashboardControllerTest extends WebTestCase
         self::assertSelectorTextContains('table', 'Succès');
     }
 
+    public function testDashboardGroupsMonitorsAndListensForUpdates(): void
+    {
+        $this->aClient->loginUser($this->createUser());
+        $vMonitor = new Monitor('Photos', MonitorType::Heartbeat, 3600, 600, new \DateTimeImmutable('-1 day'));
+        $vMonitor->setGroupName('Sauvegardes');
+        $this->aEntityManager->persist($vMonitor);
+        $this->aEntityManager->flush();
+
+        $this->aClient->request('GET', '/');
+
+        self::assertSelectorTextContains('.group-row', 'Sauvegardes');
+        self::assertSelectorTextContains('tbody tr:nth-child(2)', '100,0 %');
+        self::assertSelectorExists('turbo-mercure-stream-source[private]');
+    }
+
     public function testUnknownMonitorReturnsNotFound(): void
     {
         $this->aClient->loginUser($this->createUser());

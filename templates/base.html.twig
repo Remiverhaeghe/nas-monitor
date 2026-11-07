@@ -6,6 +6,7 @@
         <title>{% block title %}nas-monitor{% endblock %}</title>
         {% set csp_nonce = app.request.attributes.get('csp_nonce') %}
         <meta name="csp-nonce" content="{{ csp_nonce }}">
+        {{ turbo_refreshes_with('morph', 'preserve') }}
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><circle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%231f7a3d%22/></svg>">
         {% block stylesheets %}
         {% endblock %}
@@ -28,6 +29,8 @@
                 <nav>
                     <a href="{{ path('app_maintenance_index') }}">Maintenances</a>
                     &middot;
+                    <a href="{{ path('app_audit_index') }}">Journal</a>
+                    &middot;
                     <span class="muted">{{ app.user.userIdentifier }}</span>
                     &middot;
                     <a href="{{ logout_path() }}">Déconnexion</a>
@@ -39,6 +42,7 @@
                 <p class="flash">{{ message }}</p>
             {% endfor %}
             {% block body %}{% endblock %}
+            {% block live_updates %}{% endblock %}
         </main>
     </body>
 </html>

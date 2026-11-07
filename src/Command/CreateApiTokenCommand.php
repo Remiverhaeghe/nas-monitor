@@ -2,7 +2,9 @@
 
 namespace App\Command;
 
+use App\Audit\AuditLogger;
 use App\Entity\ApiToken;
+use App\Enum\AuditAction;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -18,6 +20,7 @@ final class CreateApiTokenCommand
         private readonly UserRepository $aUserRepository,
         private readonly EntityManagerInterface $aEntityManager,
         private readonly ClockInterface $aClock,
+        private readonly AuditLogger $aAuditLogger,
     ) {
     }
 
@@ -39,6 +42,7 @@ final class CreateApiTokenCommand
         $this->aEntityManager->persist($vApiToken);
         $this->aEntityManager->flush();
 
+        $this->aAuditLogger->log(AuditAction::ApiTokenCreate, \sprintf('Jeton « %s » du compte %s', $vApiToken->getName(), $vUser->getEmail()));
         $pIo->success(\sprintf('Jeton « %s » créé.', $vApiToken->getName()));
         $pIo->writeln('Jeton, affiché une seule fois : '.$vToken);
         $pIo->writeln('Utilisation : en-tête Authorization: Bearer <jeton>');

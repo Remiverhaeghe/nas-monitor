@@ -40,10 +40,8 @@
 				jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} {env.MERCURE_SUBSCRIBER_JWT_ALG}
 			}
 		}
-		# Allow anonymous subscribers (double-check that it's what you want)
-		anonymous
-		# Enable the subscription API (double-check that it's what you want)
-		subscriptions
+		# Audience attendue des jetons, identique à celle signée par l'application quel que soit le port
+		resource_identifier {$MERCURE_PUBLIC_URL:https://localhost/.well-known/mercure}
 		# Extra directives
 		{$MERCURE_EXTRA_DIRECTIVES}
 	}

@@ -2,8 +2,10 @@
 
 namespace App\Controller;
 
+use App\Audit\AuditLogger;
 use App\Dto\MaintenanceInput;
 use App\Entity\MaintenanceWindow;
+use App\Enum\AuditAction;
 use App\Form\MaintenanceFormType;
 use App\Repository\MaintenanceWindowRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -26,6 +28,7 @@ final class MaintenanceController extends AbstractController
         private readonly EntityManagerInterface $aEntityManager,
         private readonly ClockInterface $aClock,
         private readonly LoggerInterface $aLogger,
+        private readonly AuditLogger $aAuditLogger,
         #[Autowire(param: 'app.display_timezone')]
         private readonly string $aDisplayTimezone,
     ) {
@@ -52,6 +55,7 @@ final class MaintenanceController extends AbstractController
             $this->aEntityManager->flush();
 
             $this->aLogger->info('Maintenance {window} planifiée', ['window' => $vWindow->getId()]);
+            $this->aAuditLogger->log(AuditAction::MaintenanceCreate, $this->describe($vWindow));
             $this->addFlash('success', 'Maintenance planifiée.');
 
             return $this->redirectToRoute('app_maintenance_index');
@@ -71,12 +75,28 @@ final class MaintenanceController extends AbstractController
     public function delete(MaintenanceWindow $pWindow): Response
     {
         $vWindowId = $pWindow->getId();
+        $vDescription = $this->describe($pWindow);
         $this->aEntityManager->remove($pWindow);
         $this->aEntityManager->flush();
 
         $this->aLogger->info('Maintenance {window} supprimée', ['window' => $vWindowId]);
+        $this->aAuditLogger->log(AuditAction::MaintenanceDelete, $vDescription);
         $this->addFlash('success', 'Maintenance supprimée : les alertes reprennent.');
 
         return $this->redirectToRoute('app_maintenance_index');
+    }
+
+    private function describe(MaintenanceWindow $pWindow): string
+    {
+        $vTimezone = new \DateTimeZone($this->aDisplayTimezone);
+        $rDescription = \sprintf(
+            '%s, du %s au %s : %s',
+            $pWindow->getMonitor()?->getName() ?? 'tous les moniteurs',
+            $pWindow->getStartsAt()->setTimezone($vTimezone)->format('d/m/Y H:i'),
+            $pWindow->getEndsAt()->setTimezone($vTimezone)->format('d/m/Y H:i'),
+            $pWindow->getReason(),
+        );
+
+        return $rDescription;
     }
 }

@@ -83,4 +83,23 @@ class IncidentRepository extends ServiceEntityRepository
 
         return $rIncidents;
     }
+
+    /**
+     * Incidents dont une partie se situe dans la période, y compris ceux encore ouverts.
+     *
+     * @return list<Incident>
+     */
+    public function findOverlapping(\DateTimeImmutable $pFrom, \DateTimeImmutable $pTo): array
+    {
+        /** @var list<Incident> $rIncidents */
+        $rIncidents = $this->createQueryBuilder('i')
+            ->where('i.startedAt < :to')
+            ->andWhere('i.resolvedAt IS NULL OR i.resolvedAt > :from')
+            ->setParameter('from', $pFrom)
+            ->setParameter('to', $pTo)
+            ->getQuery()
+            ->getResult();
+
+        return $rIncidents;
+    }
 }
