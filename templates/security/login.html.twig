@@ -1,0 +1,23 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion - nas-monitor{% endblock %}
+
+{% block body %}
+    <form class="login" method="post" action="{{ path('app_login') }}">
+        <h1>Connexion</h1>
+
+        {% if error %}
+            <p class="error">{{ error.messageKey|trans(error.messageData, 'security') }}</p>
+        {% endif %}
+
+        <label for="username">Adresse e-mail</label>
+        <input type="email" id="username" name="_username" value="{{ last_username }}" autocomplete="email" required autofocus>
+
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" name="_password" autocomplete="current-password" required>
+
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+        <button type="submit">Se connecter</button>
+    </form>
+{% endblock %}

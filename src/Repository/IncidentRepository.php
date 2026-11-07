@@ -23,4 +23,39 @@ class IncidentRepository extends ServiceEntityRepository
 
         return $rIncident;
     }
+
+    /**
+     * @return array<int, Incident>
+     */
+    public function findOpenIndexedByMonitorId(): array
+    {
+        /** @var list<Incident> $vIncidents */
+        $vIncidents = $this->createQueryBuilder('i')
+            ->where('i.resolvedAt IS NULL')
+            ->getQuery()
+            ->getResult();
+
+        $rIncidents = [];
+        foreach ($vIncidents as $vIncident) {
+            $rIncidents[(int) $vIncident->getMonitor()->getId()] = $vIncident;
+        }
+
+        return $rIncidents;
+    }
+
+    /**
+     * @return list<Incident>
+     */
+    public function findLatestForMonitor(Monitor $pMonitor, int $pLimit): array
+    {
+        $rIncidents = $this->createQueryBuilder('i')
+            ->where('i.monitor = :monitor')
+            ->setParameter('monitor', $pMonitor)
+            ->orderBy('i.startedAt', 'DESC')
+            ->setMaxResults($pLimit)
+            ->getQuery()
+            ->getResult();
+
+        return $rIncidents;
+    }
 }
