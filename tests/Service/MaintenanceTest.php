@@ -11,13 +11,14 @@ use App\Enum\MonitorType;
 use App\Enum\NotificationChannel;
 use App\Enum\PingKind;
 use App\Notification\NtfyMessage;
-use App\Scheduler\PurgePingsHandler;
-use App\Scheduler\PurgePingsMessage;
+use App\Scheduler\PurgeHistoryHandler;
+use App\Scheduler\PurgeHistoryMessage;
 use App\Service\PingRecorder;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\OptimisticLockException;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Mercure\Update;
 use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
 class MaintenanceTest extends KernelTestCase
@@ -53,7 +54,7 @@ class MaintenanceTest extends KernelTestCase
         $this->aEntityManager->persist(new Ping($vMonitor, PingKind::Success, $vNow->modify('-89 days')));
         $this->aEntityManager->flush();
 
-        static::getContainer()->get(PurgePingsHandler::class)(new PurgePingsMessage());
+        static::getContainer()->get(PurgeHistoryHandler::class)(new PurgeHistoryMessage());
 
         self::assertSame(1, $this->aEntityManager->getRepository(Ping::class)->count([]));
     }
@@ -89,7 +90,10 @@ class MaintenanceTest extends KernelTestCase
         self::assertQueuedEmailCount(0);
         $vTransport = static::getContainer()->get('messenger.transport.async');
         self::assertInstanceOf(InMemoryTransport::class, $vTransport);
-        $vMessages = array_map(static fn ($pEnvelope): object => $pEnvelope->getMessage(), $vTransport->getSent());
+        $vMessages = array_values(array_filter(
+            array_map(static fn ($pEnvelope): object => $pEnvelope->getMessage(), $vTransport->getSent()),
+            static fn (object $pMessage): bool => !$pMessage instanceof Update,
+        ));
         self::assertCount(1, $vMessages);
         self::assertInstanceOf(NtfyMessage::class, $vMessages[0]);
         self::assertTrue($vMessages[0]->urgent);

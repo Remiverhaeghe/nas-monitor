@@ -2,6 +2,8 @@
 
 namespace App\Command;
 
+use App\Audit\AuditLogger;
+use App\Enum\AuditAction;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\Argument;
@@ -15,6 +17,7 @@ final class DisableTotpCommand
     public function __construct(
         private readonly UserRepository $aUserRepository,
         private readonly EntityManagerInterface $aEntityManager,
+        private readonly AuditLogger $aAuditLogger,
     ) {
     }
 
@@ -32,6 +35,7 @@ final class DisableTotpCommand
 
         $vUser->setTotpSecret(null);
         $this->aEntityManager->flush();
+        $this->aAuditLogger->log(AuditAction::TotpDisable, 'Compte '.$vUser->getEmail());
         $pIo->success('Double authentification désactivée pour '.$vUser->getEmail().'.');
 
         return Command::SUCCESS;

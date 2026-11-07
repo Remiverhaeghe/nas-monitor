@@ -73,5 +73,15 @@ jobs:
         run: docker compose exec -T php bin/console -e test doctrine:migrations:migrate --no-interaction
       - name: Doctrine Schema Validator
         run: docker compose exec -T php bin/console -e test doctrine:schema:validate
-      - name: Run PHPUnit
-        run: docker compose exec -T php bin/phpunit
+      - name: Run PHPUnit with coverage
+        run: docker compose exec -T -e XDEBUG_MODE=coverage php bin/phpunit --coverage-text --only-summary-for-coverage-text --coverage-clover var/coverage.xml
+      - name: Minimum coverage
+        run: |
+          docker compose exec -T -e MIN_COVERAGE php php -r '
+            $vMetrics = simplexml_load_file("var/coverage.xml")->project->metrics;
+            $vPercent = 100 * (int) $vMetrics["coveredstatements"] / max(1, (int) $vMetrics["statements"]);
+            printf("Couverture des lignes : %.1f %%, minimum %d %%\n", $vPercent, getenv("MIN_COVERAGE"));
+            exit($vPercent < (int) getenv("MIN_COVERAGE") ? 1 : 0);
+          '
+        env:
+          MIN_COVERAGE: 80

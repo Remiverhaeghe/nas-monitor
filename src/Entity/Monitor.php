@@ -31,6 +31,10 @@ class Monitor
     #[Assert\Length(max: 255)]
     private ?string $target = null;
 
+    #[ORM\Column(length: 50, nullable: true)]
+    #[Assert\Length(max: 50)]
+    private ?string $groupName = null;
+
     #[ORM\Column(length: 64, unique: true, nullable: true)]
     private ?string $pingTokenHash = null;
 
@@ -256,6 +260,16 @@ class Monitor
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getGroupName(): ?string
+    {
+        return $this->groupName;
+    }
+
+    public function setGroupName(?string $pGroupName): void
+    {
+        $this->groupName = $pGroupName;
     }
 
     public function getNotificationChannel(): NotificationChannel

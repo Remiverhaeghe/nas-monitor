@@ -2,8 +2,10 @@
 
 namespace App\Controller;
 
+use App\Audit\AuditLogger;
 use App\Dto\MonitorInput;
 use App\Entity\Monitor;
+use App\Enum\AuditAction;
 use App\Enum\MonitorType;
 use App\Enum\NotificationChannel;
 use App\Form\MonitorFormType;
@@ -30,6 +32,7 @@ final class MonitorController extends AbstractController
         private readonly IncidentManager $aIncidentManager,
         private readonly ClockInterface $aClock,
         private readonly LoggerInterface $aLogger,
+        private readonly AuditLogger $aAuditLogger,
     ) {
     }
 
@@ -49,13 +52,15 @@ final class MonitorController extends AbstractController
                 (int) $vInput->graceMinutes * 60,
                 $this->aClock->now(),
             );
-            $vMonitor->setTarget($this->normalizeTarget($vInput->target));
+            $vMonitor->setTarget($this->nullIfBlank($vInput->target));
+            $vMonitor->setGroupName($this->nullIfBlank($vInput->groupName));
             $vMonitor->setNotificationChannel($vInput->notificationChannel ?? NotificationChannel::Email);
             $vToken = $vType->isActive() ? null : $vMonitor->rotatePingToken();
             $this->aEntityManager->persist($vMonitor);
             $this->aEntityManager->flush();
 
             $this->aLogger->info('Moniteur {monitor} créé ({type})', ['monitor' => $vMonitor->getId(), 'type' => $vType->value]);
+            $this->aAuditLogger->log(AuditAction::MonitorCreate, $this->describe($vMonitor));
             if (null !== $vToken) {
                 $this->addFlash('ping_token', $vToken);
             }
@@ -81,7 +86,8 @@ final class MonitorController extends AbstractController
         if ($vForm->isSubmitted() && $vForm->isValid()) {
             $vNow = $this->aClock->now();
             $pMonitor->setName((string) $vInput->name);
-            $pMonitor->setTarget($this->normalizeTarget($vInput->target));
+            $pMonitor->setTarget($this->nullIfBlank($vInput->target));
+            $pMonitor->setGroupName($this->nullIfBlank($vInput->groupName));
             $pMonitor->setNotificationChannel($vInput->notificationChannel ?? NotificationChannel::Email);
             $pMonitor->setExpectedIntervalSeconds((int) $vInput->intervalMinutes * 60);
             $pMonitor->setGraceSeconds((int) $vInput->graceMinutes * 60);
@@ -91,6 +97,7 @@ final class MonitorController extends AbstractController
             $this->aEntityManager->flush();
 
             $this->aLogger->info('Moniteur {monitor} modifié', ['monitor' => $pMonitor->getId()]);
+            $this->aAuditLogger->log(AuditAction::MonitorEdit, $this->describe($pMonitor));
             $this->addFlash('success', 'Moniteur modifié.');
 
             return $this->redirectToRoute('app_monitor_show', ['id' => $pMonitor->getId()]);
@@ -114,6 +121,7 @@ final class MonitorController extends AbstractController
         $this->aEntityManager->flush();
 
         $this->aLogger->info('Moniteur {monitor} mis en pause', ['monitor' => $pMonitor->getId()]);
+        $this->aAuditLogger->log(AuditAction::MonitorPause, $this->describe($pMonitor));
         $this->addFlash('success', 'Moniteur mis en pause : aucune alerte ne sera envoyée.');
 
         return $this->redirectToRoute('app_monitor_show', ['id' => $pMonitor->getId()]);
@@ -127,6 +135,7 @@ final class MonitorController extends AbstractController
         $this->aEntityManager->flush();
 
         $this->aLogger->info('Moniteur {monitor} réactivé', ['monitor' => $pMonitor->getId()]);
+        $this->aAuditLogger->log(AuditAction::MonitorResume, $this->describe($pMonitor));
         $this->addFlash('success', 'Moniteur réactivé : il attend son prochain ping.');
 
         return $this->redirectToRoute('app_monitor_show', ['id' => $pMonitor->getId()]);
@@ -144,6 +153,7 @@ final class MonitorController extends AbstractController
         $this->aEntityManager->flush();
 
         $this->aLogger->notice('Jeton de ping régénéré pour le moniteur {monitor}', ['monitor' => $pMonitor->getId()]);
+        $this->aAuditLogger->log(AuditAction::MonitorTokenRotate, $this->describe($pMonitor));
         $this->addFlash('ping_token', $vToken);
 
         return $this->redirectToRoute('app_monitor_show', ['id' => $pMonitor->getId()]);
@@ -155,20 +165,29 @@ final class MonitorController extends AbstractController
     {
         $vMonitorId = $pMonitor->getId();
         $vName = $pMonitor->getName();
+        $vDescription = $this->describe($pMonitor);
         $this->aEntityManager->remove($pMonitor);
         $this->aEntityManager->flush();
 
         $this->aLogger->notice('Moniteur {monitor} supprimé', ['monitor' => $vMonitorId]);
+        $this->aAuditLogger->log(AuditAction::MonitorDelete, $vDescription);
         $this->addFlash('success', \sprintf('Moniteur « %s » supprimé.', $vName));
 
         return $this->redirectToRoute('app_dashboard');
     }
 
-    private function normalizeTarget(?string $pTarget): ?string
+    private function nullIfBlank(?string $pValue): ?string
     {
-        $vTarget = trim((string) $pTarget);
-        $rTarget = '' === $vTarget ? null : $vTarget;
+        $vValue = trim((string) $pValue);
+        $rValue = '' === $vValue ? null : $vValue;
 
-        return $rTarget;
+        return $rValue;
+    }
+
+    private function describe(Monitor $pMonitor): string
+    {
+        $rDescription = \sprintf('« %s » (n° %d)', $pMonitor->getName(), $pMonitor->getId());
+
+        return $rDescription;
     }
 }

@@ -35,6 +35,11 @@ final class MonitorFormType extends AbstractType
                 'required' => false,
                 'help' => 'Site web : URL complète. Port TCP et certificat TLS : hôte:port. Tâche planifiée : vide.',
             ])
+            ->add('groupName', TextType::class, [
+                'label' => 'Groupe',
+                'required' => false,
+                'help' => 'Regroupe les moniteurs sur le tableau de bord, par exemple Sauvegardes ou Services.',
+            ])
             ->add('intervalMinutes', IntegerType::class, [
                 'label' => 'Intervalle (minutes)',
                 'help' => 'Tâche planifiée : durée maximale entre deux pings de succès. Contrôle actif : fréquence du contrôle.',

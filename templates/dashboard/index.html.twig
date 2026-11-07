@@ -21,7 +21,7 @@
         {% endfor %}
     </ul>
 
-    {% if monitors is empty %}
+    {% if groups is empty %}
         <p class="muted">Aucun moniteur pour l'instant.</p>
     {% else %}
         <div class="table-wrap">
@@ -33,21 +33,33 @@
                         <th>Dernier ping</th>
                         <th>Intervalle</th>
                         <th>En panne depuis</th>
+                        <th>Disponibilité 7 j</th>
                     </tr>
                 </thead>
+                {% for group in groups %}
                 <tbody>
-                    {% for monitor in monitors %}
+                    {% if groups|length > 1 or group.name is not null %}
+                        <tr class="group-row">
+                            <th colspan="6" scope="rowgroup">{{ group.name ?? 'Sans groupe' }}</th>
+                        </tr>
+                    {% endif %}
+                    {% for monitor in group.monitors %}
                         {% set incident = open_incidents[monitor.id] ?? null %}
+                        {% set monitor_availability = availability[monitor.id] ?? null %}
                         <tr>
                             <td><a href="{{ path('app_monitor_show', {id: monitor.id}) }}">{{ monitor.name }}</a></td>
                             <td>{{ include('_status.html.twig', {status: monitor.status}) }}</td>
                             <td>{{ monitor.lastPingAt ? monitor.lastPingAt|date : '-' }}</td>
                             <td>{{ (monitor.expectedIntervalSeconds / 60)|round }} min</td>
                             <td>{{ incident ? incident.startedAt|date : '-' }}</td>
+                            <td>{{ monitor_availability is null ? '-' : monitor_availability|number_format(1, ',', ' ') ~ ' %' }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
+                {% endfor %}
             </table>
         </div>
     {% endif %}
 {% endblock %}
+
+{% block live_updates %}{{ turbo_stream_from(constant('App\\EventListener\\LiveUpdatePublisher::TOPIC'), true) }}{% endblock %}

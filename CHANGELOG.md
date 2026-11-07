@@ -2,6 +2,20 @@
 
 ## Non publié
 
+### Suivi et confort
+- Tableau de bord et page d'un moniteur mis à jour en direct (Mercure), sans recharger la page
+- Groupes de moniteurs sur le tableau de bord, exposés par l'API
+- Disponibilité sur 7 jours par moniteur
+- Rapport hebdomadaire par e-mail le lundi matin, commande `app:report:send` pour l'envoyer à la demande
+
+### Journal des actions
+- Connexions, échecs de connexion, modifications des moniteurs et des maintenances, actions en ligne de commande
+- Page Journal, entrées conservées un an
+
+### Exploitation
+- Contrôle de santé du worker en production
+- Couverture de code mesurée en CI, minimum 80 %
+
 ### Sauvegarde de la base
 - Service `db-backup` en production : `pg_dump` quotidien, 14 fichiers conservés, ping vers un moniteur dédié
 - Procédure de restauration documentée

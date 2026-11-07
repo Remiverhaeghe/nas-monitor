@@ -2,6 +2,6 @@
 
 namespace App\Scheduler;
 
-final class PurgePingsMessage
+final class PurgeHistoryMessage
 {
 }

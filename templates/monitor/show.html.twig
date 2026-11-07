@@ -8,7 +8,7 @@
 
     {% for token in app.flashes('ping_token') %}
         {% set ping_url = url('ping', {token: token}) %}
-        <div class="token">
+        <div class="token" id="ping-token" data-turbo-permanent>
             <p><strong>Jeton de ping</strong> : il n'est affiché qu'une seule fois, copie-le maintenant.</p>
             <pre>{{ token }}</pre>
             <p>À appeler en fin de tâche :</p>
@@ -124,3 +124,5 @@
         </div>
     {% endif %}
 {% endblock %}
+
+{% block live_updates %}{{ turbo_stream_from(constant('App\\EventListener\\LiveUpdatePublisher::TOPIC'), true) }}{% endblock %}

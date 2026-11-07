@@ -32,6 +32,15 @@
 - [x] Actions de modification en `POST` uniquement
 - [x] Échappement automatique des sorties par Twig
 - [x] Pas d'inscription publique : les comptes se créent en ligne de commande
+- [x] Journal des connexions, des échecs de connexion et des modifications, avec adresse IP
+
+## Mise à jour en direct (Mercure)
+
+- [x] Mises à jour privées : seul un navigateur connecté reçoit un cookie d'abonnement signé
+- [x] Abonnement anonyme refusé et API de liste des abonnés désactivée dans le hub (le mode `playground` du développement les autorise)
+- [x] Audience des jetons fixée sur l'URL publique du hub (`resource_identifier`)
+- [x] Aucune donnée dans les messages : un simple signal de rafraîchissement
+- [ ] `CADDY_MERCURE_JWT_SECRET` à définir en production, la valeur par défaut du gabarit est publique
 
 ## En-têtes HTTP (production)
 
