@@ -1,0 +1,11 @@
+#!/bin/sh
+# Usage : run-every <secondes> <commande>
+set -u
+
+vInterval="$1"
+shift
+
+while true; do
+    "$@"
+    sleep "$vInterval"
+done

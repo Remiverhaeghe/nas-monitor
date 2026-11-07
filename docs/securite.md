@@ -28,5 +28,17 @@
 ## Configuration
 
 - [x] Secrets et valeurs locales dans `.env.local`, non versionné
-- [ ] En-têtes de sécurité (CSP, HSTS)
+- [x] En-têtes `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` en production, en-tête `Server` retiré
+- [x] Version de PHP masquée (`expose_php = 0`)
+- [x] `session.upload_progress.enabled = 0`, suite à l'avis de sécurité PHP du 23/10/2026
+- [ ] En-têtes CSP et HSTS
 - [ ] Accès depuis l'extérieur par VPN uniquement
+
+## Contrôles automatiques
+
+La CI tourne à chaque push et chaque jour à 5 h UTC :
+
+- [x] Version de PHP comparée à la dernière version corrective publiée sur php.net, échec si elle est en retard
+- [x] `composer audit` sur les dépendances
+- [x] Image reconstruite avec `pull`, pour récupérer la dernière image de base `dunglas/frankenphp:1-php8.5`
+- [x] Dependabot propose chaque semaine les mises à jour Composer, Docker et GitHub Actions

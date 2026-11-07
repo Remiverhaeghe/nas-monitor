@@ -6,9 +6,10 @@
 |---|---|
 | `php` | FrankenPHP (serveur web et PHP) |
 | `database` | PostgreSQL 16 |
-| `mailer` | Mailpit, développement uniquement |
+| `mailer` | Mailpit, développement et simulation |
+| `worker` | Scheduler et envoi des e-mails, production uniquement (`compose.prod.yaml`) |
 
-Le worker Messenger tourne pour l'instant dans le conteneur `php`, lancé à la main.
+En développement, le worker se lance à la main dans le conteneur `php`. En production, FrankenPHP fonctionne en mode worker : l'application reste chargée entre les requêtes, les services ne gardent donc aucun état propre à une requête.
 
 ## Arborescence
 

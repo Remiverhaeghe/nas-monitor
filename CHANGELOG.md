@@ -2,6 +2,15 @@
 
 ## Non publié
 
+### Simulation du NAS et production
+- Service `worker` dans la configuration de production
+- En-têtes de sécurité ajoutés par Caddy en production
+- Simulation locale avec une sauvegarde restic et une synchronisation instable
+
+### Sécurité PHP
+- Contrôle quotidien en CI de la version de PHP et des dépendances
+- `session.upload_progress` désactivé suite à l'avis de sécurité PHP du 23/10/2026
+
 ### Intégration continue
 - Tests, PHPStan, PHP-CS-Fixer, vérification des gabarits, du YAML, du conteneur et du schéma à chaque push
 - Audit des dépendances Composer

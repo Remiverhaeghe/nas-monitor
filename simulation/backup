@@ -1,0 +1,30 @@
+#!/bin/sh
+# Sauvegarde restic de /source, signalée à nas-monitor par un ping de début et un ping de fin
+set -u
+
+ping_monitor() {
+    curl -fsS -m 10 --retry 3 -X POST -H 'Content-Type: application/json' -d "$2" "$PING_URL$1" > /dev/null \
+        || echo "Ping $1 impossible" >&2
+}
+
+vStart=$(date +%s)
+ping_monitor /start '{}'
+
+date -Iseconds >> /source/journal.txt
+head -c 65536 /dev/urandom > "/source/donnees-$(date +%H%M).bin"
+
+if ! restic cat config > /dev/null 2>&1; then
+    restic init --quiet
+fi
+
+if restic backup /source --json --quiet > /tmp/backup.json 2> /tmp/backup.err; then
+    vSummary=$(grep '"message_type":"summary"' /tmp/backup.json)
+    vPayload=$(echo "$vSummary" | jq -c --argjson start "$vStart" \
+        '{duration_ms: ((now | floor) - $start) * 1000, size_bytes: .total_bytes_processed, message: ("snapshot " + .snapshot_id[0:8])}')
+    ping_monitor '' "$vPayload"
+    echo "Sauvegarde terminée : $vPayload"
+else
+    vPayload=$(jq -cn --arg message "$(tail -c 400 /tmp/backup.err)" '{message: $message}')
+    ping_monitor /fail "$vPayload"
+    echo "Sauvegarde en échec : $vPayload" >&2
+fi
