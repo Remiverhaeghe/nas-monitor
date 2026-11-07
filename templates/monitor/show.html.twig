@@ -6,6 +6,28 @@
     <p><a href="{{ path('app_dashboard') }}">Tous les moniteurs</a></p>
     <h1>{{ monitor.name }}</h1>
 
+    {% for token in app.flashes('ping_token') %}
+        {% set ping_url = url('ping', {token: token}) %}
+        <div class="token">
+            <p><strong>Jeton de ping</strong> : il n'est affiché qu'une seule fois, copie-le maintenant.</p>
+            <pre>{{ token }}</pre>
+            <p>À appeler en fin de tâche :</p>
+            <pre>curl -fsS -m 10 --retry 3 -X POST {{ ping_url }}</pre>
+            <p class="muted">Variantes : <code>{{ ping_url }}/start</code> au début, <code>{{ ping_url }}/fail</code> en cas d'échec.</p>
+        </div>
+    {% endfor %}
+
+    <div class="actions">
+        <a class="button" href="{{ path('app_monitor_edit', {id: monitor.id}) }}">Modifier</a>
+        {% if monitor.paused %}
+            {{ include('monitor/_action.html.twig', {route: 'app_monitor_resume', label: 'Reprendre'}) }}
+        {% else %}
+            {{ include('monitor/_action.html.twig', {route: 'app_monitor_pause', label: 'Mettre en pause'}) }}
+        {% endif %}
+        {{ include('monitor/_action.html.twig', {route: 'app_monitor_rotate_token', label: 'Régénérer le jeton', confirm: 'L\'ancien jeton cessera immédiatement de fonctionner. Continuer ?'}) }}
+        {{ include('monitor/_action.html.twig', {route: 'app_monitor_delete', label: 'Supprimer', danger: true, confirm: 'Le moniteur et tout son historique seront supprimés. Continuer ?'}) }}
+    </div>
+
     <dl class="details">
         <dt>Statut</dt>
         <dd>{{ include('_status.html.twig', {status: monitor.status}) }}</dd>
