@@ -27,9 +27,9 @@ src/
   Check/            ActiveChecker, ActiveCheckRunner, CheckResult
   Command/          CreateApiTokenCommand, CreateMonitorCommand, CreateUserCommand,
                     DisableTotpCommand, EnableTotpCommand, RegenerateBackupCodesCommand,
-                    SendWeeklyReportCommand
+                    RotateTotpKeyCommand, SendWeeklyReportCommand
   Controller/       AuditController, DashboardController, MaintenanceController,
-                    MonitorController, PingController, SecurityController
+                    MonitorController, PingController, SecurityController, StatusController
   Controller/Api/   MonitorApiController
   DataFixtures/     AppFixtures
   Dto/              MaintenanceInput, MonitorInput, PingPayload
@@ -39,6 +39,7 @@ src/
   EventListener/    LiveUpdatePublisher, UserTotpSecretListener, WorkerHeartbeatListener
   EventSubscriber/  LoginAuditSubscriber, SecurityHeadersSubscriber
   Form/             MaintenanceFormType, MonitorFormType
+  Metric/           MetricLimits
   Notification/     AlertNotifier, NtfyMessage, NtfyMessageHandler
   Report/           WeeklyReportSender
   Repository/       un dépôt par entité
@@ -47,20 +48,23 @@ src/
   Service/          AnomalyDetector, AvailabilityCalculator, IncidentManager, IncidentReminder,
                     MonitorChecker, PingRecorder
   Schedule.php      planning du Scheduler
-templates/          Twig : base, audit, dashboard, maintenance, monitor, security
+templates/          Twig : base, audit, dashboard, maintenance, monitor, security, status
 assets/             feuille de style et contrôleur Stimulus de confirmation
 docker/db-backup/   script de sauvegarde de la base
+docker/nas-metrics/ script de relevé de l'état du NAS
 migrations/         migrations Doctrine
 simulation/         tâches de la simulation locale
 tests/
   Chart/            TrendChartTest
   Check/            ActiveCheckerTest
+  Command/          RotateTotpKeyCommandTest
   Controller/       AuditControllerTest, DashboardControllerTest, MaintenanceControllerTest,
-                    MonitorControllerTest, PingControllerTest
+                    MonitorControllerTest, PingControllerTest, StatusControllerTest
   Controller/Api/   MonitorApiControllerTest
   Entity/           MaintenanceWindowTest, MonitorTest
   EventListener/    LiveUpdatePublisherTest, WorkerHeartbeatListenerTest
   EventSubscriber/  SecurityHeadersSubscriberTest
+  Metric/           MetricLimitsTest
   Notification/     NtfyMessageHandlerTest
   Scheduler/        ExternalHeartbeatHandlerTest
   Security/         SecretCipherTest
@@ -89,7 +93,7 @@ Les contrôles actifs produisent des pings comme les tâches planifiées : un se
 **Chaque minute**
 
 1. Le Scheduler envoie `CheckMonitorsMessage`
-2. `ActiveCheckRunner` effectue les contrôles HTTP, TCP et TLS arrivés à échéance et les enregistre par `PingRecorder`
+2. `ActiveCheckRunner` effectue les contrôles HTTP, TCP, TLS, DNS et ICMP arrivés à échéance, parents en premier et les enregistre par `PingRecorder`
 3. `MonitorChecker` recalcule le statut des moniteurs opérationnels ou en retard
 4. Chaque changement passe par `IncidentManager`
 5. `IncidentReminder` signale les pannes qui durent et celles retenues pendant une maintenance
@@ -112,14 +116,14 @@ Le secret est chiffré par `SecretCipher` avant d'être enregistré. `UserTotpSe
 
 **Alertes**
 
-`AlertNotifier` retient toute alerte pendant une maintenance, puis choisit le canal du moniteur. `Incident::lastNotifiedAt` reste vide tant qu'aucune alerte n'est partie, ce qui permet à `IncidentReminder` de la rattraper. E-mails et messages ntfy partent par Messenger (transport `async`) : un serveur lent ne bloque pas la vérification. Les échecs d'envoi sont réessayés trois fois, puis placés dans le transport `failed`.
+`AlertNotifier` retient toute alerte pendant une maintenance ou tant que le moniteur parent est en panne, puis choisit le canal du moniteur. `Incident::lastNotifiedAt` reste vide tant qu'aucune alerte n'est partie, ce qui permet à `IncidentReminder` de la rattraper. E-mails et messages ntfy partent par Messenger (transport `async`) : un serveur lent ne bloque pas la vérification. Les échecs d'envoi sont réessayés trois fois, puis placés dans le transport `failed`.
 
 ## Données
 
 | Table | Contenu |
 |---|---|
-| `monitor` | Configuration, groupe, état courant et version |
-| `ping` | Signaux reçus et résultats de contrôles, index `(monitor_id, received_at)` et `(received_at)` |
+| `monitor` | Configuration, groupe, parent, visibilité publique, seuils des métriques, état courant et version |
+| `ping` | Signaux reçus, résultats de contrôles et métriques, index `(monitor_id, received_at)` et `(received_at)` |
 | `incident` | Pannes et date de dernière alerte, index `(monitor_id, resolved_at)` |
 | `maintenance_window` | Plages de maintenance et répétition, index `(starts_at, ends_at)` |
 | `app_user` | Comptes, secret TOTP chiffré, empreintes des codes de secours |

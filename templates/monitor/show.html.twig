@@ -47,11 +47,21 @@
         <dd>{{ monitor.lastPingAt ? monitor.lastPingAt|date : 'aucun' }}</dd>
         <dt>Alertes</dt>
         <dd>{{ monitor.notificationChannel.label }}</dd>
+        {% if monitor.parent %}
+            <dt>Dépend de</dt>
+            <dd><a href="{{ path('app_monitor_show', {id: monitor.parent.id}) }}">{{ monitor.parent.name }}</a></dd>
+        {% endif %}
+        {% if monitor.metricLimits is not empty %}
+            <dt>Seuils des métriques</dt>
+            <dd>{% for name, limit in monitor.metricLimits %}{{ name }} ≤ {{ limit }}{{ not loop.last ? ', ' }}{% endfor %}</dd>
+        {% endif %}
+        <dt>Page de statut</dt>
+        <dd>{{ monitor.publicVisible ? 'visible' : 'masqué' }}</dd>
         <dt>Créé le</dt>
         <dd>{{ monitor.createdAt|date }}</dd>
     </dl>
 
-    {% if duration_chart or size_chart %}
+    {% if duration_chart or size_chart or metric_charts is not empty %}
         <h2>Tendances</h2>
         <div class="trends">
             {% if duration_chart %}
@@ -60,6 +70,9 @@
             {% if size_chart %}
                 {{ include('monitor/_trend.html.twig', {chart: size_chart, title: 'Taille sauvegardée (Mo)'}) }}
             {% endif %}
+            {% for name, chart in metric_charts %}
+                {{ include('monitor/_trend.html.twig', {chart: chart, title: name ~ (monitor.metricLimits[name] is defined ? ' (maximum ' ~ monitor.metricLimits[name] ~ ')' : '')}) }}
+            {% endfor %}
         </div>
     {% endif %}
 

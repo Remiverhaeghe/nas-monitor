@@ -25,6 +25,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # Historique complet : Infection compare la pull request à sa branche cible
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - name: Build Docker images
@@ -87,4 +89,13 @@ jobs:
           MIN_COVERAGE: 80
       # Les tests partagent la base de test : un seul processus
       - name: Mutation testing
+        if: github.event_name != 'pull_request'
         run: docker compose exec -T php vendor/bin/infection --coverage=var/coverage --skip-initial-tests --threads=1 --no-progress --show-mutations=0
+      - name: Mutation testing on changed lines
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          docker compose exec -T php git config --global --add safe.directory /app
+          docker compose exec -T php vendor/bin/infection --coverage=var/coverage --skip-initial-tests --threads=1 --no-progress --show-mutations=0 \
+            --git-diff-lines --git-diff-base="origin/$BASE_REF"

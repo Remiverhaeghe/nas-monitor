@@ -12,6 +12,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final class ActiveChecker
 {
     private const TIMEOUT_SECONDS = 10;
+    private const ICMP_TIMEOUT_SECONDS = 3;
+    private const ICMP_PAYLOAD = 'nas-monitor';
 
     public function __construct(
         private readonly HttpClientInterface $aHttpClient,
@@ -30,6 +32,8 @@ final class ActiveChecker
             MonitorType::Http => $this->checkHttp($vTarget),
             MonitorType::Tcp => $this->checkTcp($vTarget),
             MonitorType::Tls => $this->checkTls($vTarget),
+            MonitorType::Dns => $this->checkDns($vTarget),
+            MonitorType::Icmp => $this->checkIcmp($vTarget),
             MonitorType::Heartbeat => throw new \LogicException('Un moniteur heartbeat ne se contrôle pas activement.'),
         };
 
@@ -71,6 +75,43 @@ final class ActiveChecker
     }
 
     /**
+     * Cible « nom » ou « nom=adresse attendue ».
+     *
+     * @param list<string> $pAddresses
+     *
+     * @return array{bool, string}
+     */
+    public static function evaluateDns(string $pTarget, array $pAddresses): array
+    {
+        [$vHost, $vExpected] = array_pad(explode('=', $pTarget, 2), 2, null);
+
+        $rEvaluation = match (true) {
+            [] === $pAddresses => [false, 'Aucune adresse pour '.$vHost],
+            null !== $vExpected && !\in_array($vExpected, $pAddresses, true) => [false, \sprintf('%s résout vers %s au lieu de %s', $vHost, implode(', ', $pAddresses), $vExpected)],
+            default => [true, $vHost.' résout vers '.implode(', ', $pAddresses)],
+        };
+
+        return $rEvaluation;
+    }
+
+    /**
+     * Requête d'écho ICMP (type 8) avec somme de contrôle RFC 1071.
+     */
+    public static function buildEchoRequest(int $pSequence): string
+    {
+        $vUnsigned = pack('CCnnn', 8, 0, 0, 0, $pSequence).self::ICMP_PAYLOAD;
+        $vData = 0 === \strlen($vUnsigned) % 2 ? $vUnsigned : $vUnsigned."\0";
+        $vSum = array_sum(unpack('n*', $vData) ?: []);
+        while ($vSum > 0xFFFF) {
+            $vSum = ($vSum & 0xFFFF) + ($vSum >> 16);
+        }
+
+        $rPacket = pack('CCnnn', 8, 0, ~$vSum & 0xFFFF, 0, $pSequence).self::ICMP_PAYLOAD;
+
+        return $rPacket;
+    }
+
+    /**
      * @return array{bool, string}
      */
     private function checkHttp(string $pUrl): array
@@ -87,6 +128,62 @@ final class ActiveChecker
         }
 
         $rResult = [$vStatusCode < 400, 'HTTP '.$vStatusCode];
+
+        return $rResult;
+    }
+
+    /**
+     * @return array{bool, string}
+     */
+    private function checkDns(string $pTarget): array
+    {
+        $vHost = explode('=', $pTarget, 2)[0];
+        $vAddresses = [];
+        foreach (@dns_get_record($vHost, \DNS_A | \DNS_AAAA) ?: [] as $vRecord) {
+            $vAddresses[] = (string) ($vRecord['ip'] ?? $vRecord['ipv6'] ?? '');
+        }
+
+        $rResult = self::evaluateDns($pTarget, array_values(array_filter($vAddresses)));
+
+        return $rResult;
+    }
+
+    /**
+     * Socket ICMP « datagramme » : pas besoin de droits root, Docker l'autorise par défaut (net.ipv4.ping_group_range).
+     *
+     * @return array{bool, string}
+     */
+    private function checkIcmp(string $pHost): array
+    {
+        $vAddress = false !== filter_var($pHost, \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV4) ? $pHost : gethostbyname($pHost);
+        if (false === filter_var($vAddress, \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV4)) {
+            return [false, 'Nom introuvable : '.$pHost];
+        }
+
+        $vSocket = @socket_create(\AF_INET, \SOCK_DGRAM, 1);
+        if (false === $vSocket) {
+            return [false, 'Socket ICMP indisponible : '.socket_strerror(socket_last_error())];
+        }
+
+        try {
+            socket_set_option($vSocket, \SOL_SOCKET, \SO_RCVTIMEO, ['sec' => self::ICMP_TIMEOUT_SECONDS, 'usec' => 0]);
+            $vPacket = self::buildEchoRequest(random_int(1, 0xFFFF));
+            if (false === @socket_sendto($vSocket, $vPacket, \strlen($vPacket), 0, $vAddress, 0)) {
+                return [false, 'Envoi du ping impossible : '.socket_strerror(socket_last_error($vSocket))];
+            }
+
+            $vReply = '';
+            $vFrom = '';
+            $vPort = 0;
+            if (false === @socket_recvfrom($vSocket, $vReply, 1500, 0, $vFrom, $vPort)) {
+                return [false, \sprintf('Pas de réponse de %s en %d s', $vAddress, self::ICMP_TIMEOUT_SECONDS)];
+            }
+        } finally {
+            socket_close($vSocket);
+        }
+
+        $vType = '' === $vReply ? -1 : \ord($vReply[0]);
+        $rResult = 0 === $vType ? [true, 'Réponse de '.$vAddress] : [false, \sprintf('Réponse ICMP inattendue de %s (type %d)', $vAddress, $vType)];
 
         return $rResult;
     }

@@ -201,6 +201,43 @@ class MonitorControllerTest extends WebTestCase
         return $rMonitor;
     }
 
+    public function testDependencyAndMetricLimitsAreSaved(): void
+    {
+        $vNas = new Monitor('NAS', MonitorType::Icmp, 300, 60, new \DateTimeImmutable());
+        $vNas->setTarget('192.168.1.10');
+        $this->aEntityManager->persist($vNas);
+        $this->aEntityManager->flush();
+
+        $vCrawler = $this->aClient->request('GET', '/monitors/new');
+        $this->aClient->submit($vCrawler->selectButton('Enregistrer')->form([
+            'monitor_form[name]' => 'Relevé du NAS',
+            'monitor_form[parent]' => (string) $vNas->getId(),
+            'monitor_form[publicVisible]' => '1',
+            'monitor_form[metricLimits]' => 'disk_used_percent=90, temperature_c=60',
+        ]));
+
+        self::assertResponseRedirects();
+        $vMonitor = $this->findMonitorByName('Relevé du NAS');
+        self::assertSame($vNas->getId(), $vMonitor->getParent()?->getId());
+        self::assertTrue($vMonitor->isPublicVisible());
+        self::assertSame(['disk_used_percent' => 90.0, 'temperature_c' => 60.0], $vMonitor->getMetricLimits());
+
+        $vCrawler = $this->aClient->request('GET', '/monitors/'.$vNas->getId().'/edit');
+        self::assertSame(0, $vCrawler->filter('#monitor_form_parent option[value="'.$vNas->getId().'"]')->count());
+    }
+
+    public function testInvalidMetricLimitIsRejected(): void
+    {
+        $vCrawler = $this->aClient->request('GET', '/monitors/new');
+        $this->aClient->submit($vCrawler->selectButton('Enregistrer')->form([
+            'monitor_form[name]' => 'Relevé du NAS',
+            'monitor_form[metricLimits]' => 'Disque plein',
+        ]));
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('form', 'Seuil « Disque plein » invalide');
+    }
+
     private function reload(Monitor $pMonitor): Monitor
     {
         $this->aEntityManager->clear();

@@ -42,6 +42,17 @@ services:
       PING_URL: http://php/ping/${PING_TOKEN_SYNC:-}
       FAIL_PERCENT: 30
 
+  # Même script que sur le NAS, appliqué au conteneur lui-même
+  metrics:
+    build: ./simulation
+    profiles: [jobs]
+    command: ["run-every", "60", "sh", "/scripts/nas-metrics", "/"]
+    restart: unless-stopped
+    environment:
+      NAS_METRICS_PING_URL: http://php/ping/${PING_TOKEN_METRICS:-}
+    volumes:
+      - ./docker/nas-metrics/nas-metrics:/scripts/nas-metrics:ro
+
 volumes:
   backup_source:
   backup_repository:

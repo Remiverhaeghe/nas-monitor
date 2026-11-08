@@ -77,6 +77,7 @@ final class DashboardController extends AbstractController
             'monitor' => $pMonitor,
             'duration_chart' => $this->aTrendChartFactory->durations($vSuccesses),
             'size_chart' => $this->aTrendChartFactory->sizes($vSuccesses),
+            'metric_charts' => $this->aTrendChartFactory->metrics($vSuccesses),
             'pings' => $this->aPingRepository->findLatestForMonitor($pMonitor, self::PING_LIMIT),
             'incidents' => $this->aIncidentRepository->findLatestForMonitor($pMonitor, self::INCIDENT_LIMIT),
         ]);

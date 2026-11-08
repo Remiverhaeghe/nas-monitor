@@ -80,6 +80,42 @@ class ActiveCheckerTest extends TestCase
         self::assertFalse($vChecker->check($this->createMonitor(MonitorType::Tcp, $vAddress))->success);
     }
 
+    public function testDnsResolutionIsComparedToExpectedAddress(): void
+    {
+        self::assertTrue(ActiveChecker::evaluateDns('nas.exemple.fr', ['192.168.1.10'])[0]);
+        self::assertTrue(ActiveChecker::evaluateDns('nas.exemple.fr=192.168.1.10', ['192.168.1.10', '::1'])[0]);
+        self::assertSame(
+            [false, 'nas.exemple.fr résout vers 10.0.0.1 au lieu de 192.168.1.10'],
+            ActiveChecker::evaluateDns('nas.exemple.fr=192.168.1.10', ['10.0.0.1']),
+        );
+        self::assertSame([false, 'Aucune adresse pour nas.exemple.fr'], ActiveChecker::evaluateDns('nas.exemple.fr', []));
+    }
+
+    public function testEchoRequestHasValidChecksum(): void
+    {
+        $vPacket = ActiveChecker::buildEchoRequest(42);
+        $vData = 0 === \strlen($vPacket) % 2 ? $vPacket : $vPacket."\0";
+        $vSum = array_sum(unpack('n*', $vData) ?: []);
+        while ($vSum > 0xFFFF) {
+            $vSum = ($vSum & 0xFFFF) + ($vSum >> 16);
+        }
+
+        self::assertSame(8, \ord($vPacket[0]));
+        self::assertSame(0xFFFF, $vSum);
+    }
+
+    public function testIcmpPingToLoopback(): void
+    {
+        if (!\extension_loaded('sockets')) {
+            self::markTestSkipped('Extension sockets absente');
+        }
+
+        $vResult = $this->createChecker(new MockResponse())->check($this->createMonitor(MonitorType::Icmp, '127.0.0.1'));
+
+        self::assertTrue($vResult->success, $vResult->message);
+        self::assertSame('Réponse de 127.0.0.1', $vResult->message);
+    }
+
     private function createChecker(MockResponse $pResponse): ActiveChecker
     {
         $rChecker = new ActiveChecker(new MockHttpClient($pResponse), new MockClock(self::NOW), 14);

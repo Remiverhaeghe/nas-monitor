@@ -54,6 +54,7 @@ final class MonitorController extends AbstractController
             );
             $vMonitor->setTarget($this->nullIfBlank($vInput->target));
             $vMonitor->setGroupName($this->nullIfBlank($vInput->groupName));
+            $this->applyOptions($vMonitor, $vInput);
             $vMonitor->setNotificationChannel($vInput->notificationChannel ?? NotificationChannel::Email);
             $vToken = $vType->isActive() ? null : $vMonitor->rotatePingToken();
             $this->aEntityManager->persist($vMonitor);
@@ -80,7 +81,8 @@ final class MonitorController extends AbstractController
     public function edit(Request $pRequest, Monitor $pMonitor): Response
     {
         $vInput = MonitorInput::fromMonitor($pMonitor);
-        $vForm = $this->createForm(MonitorFormType::class, $vInput, ['is_edit' => true]);
+        $vInput->hasChildren = $this->aEntityManager->getRepository(Monitor::class)->count(['parent' => $pMonitor]) > 0;
+        $vForm = $this->createForm(MonitorFormType::class, $vInput, ['is_edit' => true, 'current_monitor' => $pMonitor]);
         $vForm->handleRequest($pRequest);
 
         if ($vForm->isSubmitted() && $vForm->isValid()) {
@@ -88,6 +90,7 @@ final class MonitorController extends AbstractController
             $pMonitor->setName((string) $vInput->name);
             $pMonitor->setTarget($this->nullIfBlank($vInput->target));
             $pMonitor->setGroupName($this->nullIfBlank($vInput->groupName));
+            $this->applyOptions($pMonitor, $vInput);
             $pMonitor->setNotificationChannel($vInput->notificationChannel ?? NotificationChannel::Email);
             $pMonitor->setExpectedIntervalSeconds((int) $vInput->intervalMinutes * 60);
             $pMonitor->setGraceSeconds((int) $vInput->graceMinutes * 60);
@@ -182,6 +185,13 @@ final class MonitorController extends AbstractController
         $rValue = '' === $vValue ? null : $vValue;
 
         return $rValue;
+    }
+
+    private function applyOptions(Monitor $pMonitor, MonitorInput $pInput): void
+    {
+        $pMonitor->setParent($pInput->parent);
+        $pMonitor->setPublicVisible($pInput->publicVisible);
+        $pMonitor->setMetricLimits($pInput->parsedMetricLimits());
     }
 
     private function describe(Monitor $pMonitor): string

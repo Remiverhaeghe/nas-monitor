@@ -10,3 +10,10 @@ mercure:
                     iss: '%env(MERCURE_JWT_ISSUER)%'
                     sub: 'app'
                     client_id: 'app'
+
+# Serveur HTTP des tests navigateur : le préfixe __Secure- exigerait HTTPS
+when@test:
+    mercure:
+        hubs:
+            default:
+                cookie_name: mercure_access_token

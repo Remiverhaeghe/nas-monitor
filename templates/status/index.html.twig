@@ -1,0 +1,48 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}État des services{% endblock %}
+
+{% block head %}<meta http-equiv="refresh" content="60">{% endblock %}
+
+{% block body %}
+    <h1>État des services</h1>
+
+    {% if groups is empty %}
+        <p class="muted">Aucun service publié.</p>
+    {% else %}
+        <p class="status-summary {{ down_count > 0 ? 'down' : 'up' }}">
+            {{ down_count > 0 ? (down_count == 1 ? 'Un service est en panne.' : down_count ~ ' services sont en panne.') : 'Tous les services fonctionnent.' }}
+        </p>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Statut</th>
+                        <th>Disponibilité 30 j</th>
+                    </tr>
+                </thead>
+                {% for group in groups %}
+                <tbody>
+                    {% if groups|length > 1 or group.name is not null %}
+                        <tr class="group-row">
+                            <th colspan="3" scope="rowgroup">{{ group.name ?? 'Autres services' }}</th>
+                        </tr>
+                    {% endif %}
+                    {% for monitor in group.monitors %}
+                        {% set monitor_availability = availability[monitor.id] ?? null %}
+                        <tr>
+                            <td>{{ monitor.name }}</td>
+                            <td>{{ include('_status.html.twig', {status: monitor.status}) }}</td>
+                            <td>{{ monitor_availability is null ? '-' : monitor_availability|number_format(2, ',', ' ') ~ ' %' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                {% endfor %}
+            </table>
+        </div>
+    {% endif %}
+
+    <p class="muted">Mis à jour le {{ now|date }}, actualisation automatique chaque minute.</p>
+{% endblock %}

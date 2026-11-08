@@ -12,7 +12,7 @@
 
 - [x] Méthode `POST` uniquement
 - [x] Limite de 60 requêtes par minute et par adresse IP, vérifiée avant la recherche du jeton
-- [x] Corps JSON validé, valeurs négatives refusées, message tronqué à 500 caractères
+- [x] Corps JSON validé, valeurs négatives refusées, message tronqué à 500 caractères, 20 métriques numériques au plus aux noms contrôlés
 - [x] Pare-feu sans session
 
 ## API
@@ -23,12 +23,14 @@
 
 ## Interface web
 
-- [x] Toutes les pages sauf `/login` exigent une connexion
+- [x] Toutes les pages sauf `/login` et `/status` exigent une connexion
+- [x] Page de statut publique limitée aux moniteurs marqués visibles : ni cible, ni message, ni historique
 - [x] Mots de passe hachés par l'algorithme `auto` de Symfony, rehachés à la connexion si besoin
 - [x] Cinq tentatives de connexion par quart d'heure
 - [x] Double authentification par code TOTP (scheb/2fa), activée par compte, avec confirmation d'un code avant activation
 - [x] Secret TOTP chiffré en base (libsodium secretbox), clé `TOTP_ENCRYPTION_KEY` fournie par l'environnement ; un secret illisible bloque la connexion au lieu de sauter le second facteur
 - [x] Dix codes de secours de 64 bits, à usage unique, stockés sous forme d'empreinte SHA-256
+- [x] Rotation de la clé de chiffrement par `app:totp:rotate-key`, en une transaction
 - [x] Jeton CSRF sur la connexion, la déconnexion et chaque action (pause, reprise, régénération, suppression)
 - [x] Actions de modification en `POST` uniquement
 - [x] Échappement automatique des sorties par Twig

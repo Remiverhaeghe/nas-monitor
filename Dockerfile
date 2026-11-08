@@ -27,6 +27,7 @@ RUN <<-EOF
 		apcu \
 		intl \
 		opcache \
+		sockets \
 		zip
 	rm -rf /var/lib/apt/lists/*
 EOF
@@ -69,19 +70,14 @@ RUN <<-EOF
 	git config --system --add safe.directory /app
 EOF
 
-# Symfony Language Server, for editors and AI agents that don't bundle it themselves
-# https://github.com/symfony/language-tools
-ARG TARGETARCH
+# Chromium pour les tests de bout en bout (Panther), absent de l'image de production
+ENV PANTHER_NO_SANDBOX=1
+ENV PANTHER_CHROME_ARGUMENTS='--disable-dev-shm-usage'
+# hadolint ignore=DL3008
 RUN <<-EOF
-	case "$TARGETARCH" in
-		amd64) lsp_arch=x64 ;;
-		arm64) lsp_arch=arm64 ;;
-		*) echo "unsupported architecture: $TARGETARCH"; exit 1 ;;
-	esac
-	# The release URL redirects to the latest tag, no API token nor rate limit involved
-	lsp_version=$(basename "$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/symfony/language-tools/releases/latest)")
-	curl -fsSL "https://github.com/symfony/language-tools/releases/download/$lsp_version/symfony-lsp-$lsp_version-linux-$lsp_arch.tar.gz" \
-		| tar -xz -C /usr/local/bin --strip-components=1 --wildcards '*/symfony-lsp'
+	apt-get update
+	apt-get install -y --no-install-recommends chromium chromium-driver
+	rm -rf /var/lib/apt/lists/*
 EOF
 
 COPY --link frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/

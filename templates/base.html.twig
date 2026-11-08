@@ -7,8 +7,11 @@
         {% set csp_nonce = app.request.attributes.get('csp_nonce') %}
         <meta name="csp-nonce" content="{{ csp_nonce }}">
         {{ turbo_refreshes_with('morph', 'preserve') }}
+        {% block head %}{% endblock %}
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><circle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%231f7a3d%22/></svg>">
         {% block stylesheets %}
+            {# Lien direct : importée depuis app.js, la feuille deviendrait un module data: bloqué par la CSP #}
+            <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
         {% endblock %}
 
         {% block javascripts %}

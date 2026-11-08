@@ -6,6 +6,7 @@ use App\Dto\PingPayload;
 use App\Entity\Monitor;
 use App\Entity\Ping;
 use App\Enum\PingKind;
+use App\Metric\MetricLimits;
 use App\Notification\AlertNotifier;
 use App\Repository\PingRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -39,6 +40,7 @@ final class PingRecorder
             $pPayload?->message,
             $pSourceIp,
         );
+        $rPing->setMetrics($pPayload?->normalizedMetrics());
         if (PingKind::Success === $pKind && !$pMonitor->getType()->isActive()) {
             $this->checkAnomaly($pMonitor, $rPing);
         }
@@ -64,15 +66,20 @@ final class PingRecorder
     }
 
     /**
+     * Anomalie : résultat éloigné des exécutions précédentes, ou métrique au-delà de son seuil.
      * L'alerte n'est envoyée qu'au début d'une série d'anomalies, pas à chaque exécution anormale.
      */
     private function checkAnomaly(Monitor $pMonitor, Ping $pPing): void
     {
         $vHistory = $this->aPingRepository->findRecentSuccessesForMonitor($pMonitor, AnomalyDetector::HISTORY_SIZE);
-        $vAnomaly = $this->aAnomalyDetector->detect($pPing, $vHistory);
-        if (null === $vAnomaly) {
+        $vFindings = array_filter([
+            $this->aAnomalyDetector->detect($pPing, $vHistory),
+            ...MetricLimits::findExceeded($pPing->getMetrics() ?? [], $pMonitor->getMetricLimits()),
+        ]);
+        if ([] === $vFindings) {
             return;
         }
+        $vAnomaly = mb_substr(implode(' ; ', $vFindings), 0, 255);
 
         $pPing->markAnomaly($vAnomaly);
         $this->aLogger->warning('Anomalie sur le moniteur {monitor} : {anomaly}', [

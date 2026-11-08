@@ -2,6 +2,24 @@
 
 ## Non publié
 
+### Tests dans un navigateur
+- Parcours de bout en bout avec Panther et Chromium, serveur hors debug pour que la CSP s'applique
+- Contrôle des erreurs de la console et de la confirmation avant suppression
+- Captures du README générées à partir des données de démonstration (`bin/phpunit --group screenshots`)
+
+### Surveillance du NAS
+- Script de relevé du NAS (disque, mémoire, charge, température, SMART) envoyé comme ping avec métriques
+- Seuils par métrique, dépassement signalé comme anomalie, courbe par métrique
+- Moniteurs de type ping ICMP et résolution DNS
+- Dépendance entre moniteurs : les alertes d'un service attendent tant que son parent est en panne
+
+### Page de statut publique
+- Page `/status` sans connexion, limitée aux moniteurs marqués visibles
+
+### Exploitation
+- Commande `app:totp:rotate-key` pour changer la clé de chiffrement des secrets TOTP
+- Tests de mutation limités aux lignes modifiées dans les pull requests
+
 ### Double authentification renforcée
 - Secret TOTP chiffré en base (libsodium), clé `TOTP_ENCRYPTION_KEY` hors de la base
 - Dix codes de secours à usage unique, affichés à l'activation, commande `app:user:backup-codes` pour les remplacer

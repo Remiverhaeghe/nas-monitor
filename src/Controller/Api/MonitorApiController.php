@@ -73,6 +73,7 @@ final class MonitorApiController
             'name' => $pMonitor->getName(),
             'type' => $pMonitor->getType()->value,
             'group' => $pMonitor->getGroupName(),
+            'parent_id' => $pMonitor->getParent()?->getId(),
             'target' => $pMonitor->getTarget(),
             'status' => $pMonitor->getStatus()->value,
             'paused' => $pMonitor->isPaused(),
@@ -110,6 +111,7 @@ final class MonitorApiController
             'size_bytes' => $pPing->getSizeBytes(),
             'message' => $pPing->getMessage(),
             'anomaly' => $pPing->getAnomaly(),
+            'metrics' => $pPing->getMetrics(),
         ];
 
         return $rData;
