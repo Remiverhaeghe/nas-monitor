@@ -19,6 +19,7 @@ enum AuditAction: string
     case TotpEnable = 'totp_enable';
     case TotpDisable = 'totp_disable';
     case BackupCodesGenerate = 'backup_codes_generate';
+    case TotpKeyRotate = 'totp_key_rotate';
 
     public function label(): string
     {
@@ -38,6 +39,7 @@ enum AuditAction: string
             self::TotpEnable => 'Double authentification activée',
             self::TotpDisable => 'Double authentification désactivée',
             self::BackupCodesGenerate => 'Nouveaux codes de secours',
+            self::TotpKeyRotate => 'Rotation de la clé TOTP',
         };
 
         return $rLabel;

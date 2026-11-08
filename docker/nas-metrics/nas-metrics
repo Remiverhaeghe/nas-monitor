@@ -1,0 +1,35 @@
+#!/bin/sh
+# Relevé de l'état du NAS envoyé comme ping avec métriques.
+# Usage : NAS_METRICS_PING_URL=https://<hôte>/ping/<jeton> nas-metrics [volume]
+# À lancer sur le NAS par le planificateur de tâches, en root pour lire l'état SMART.
+set -u
+
+vVolume="${1:-${NAS_METRICS_VOLUME:-/volume1}}"
+vMetrics=""
+
+add_metric() {
+    if [ -n "$2" ]; then
+        vMetrics="${vMetrics:+$vMetrics,}\"$1\":$2"
+    fi
+}
+
+add_metric disk_used_percent "$(df -P "$vVolume" 2>/dev/null | awk 'NR == 2 { gsub("%", "", $5); print $5 }')"
+add_metric memory_used_percent "$(awk '/^MemTotal:/ { t = $2 } /^MemAvailable:/ { a = $2 } END { if (t > 0) printf "%.1f", (t - a) * 100 / t }' /proc/meminfo)"
+add_metric load_1m "$(cut -d ' ' -f 1 /proc/loadavg)"
+add_metric temperature_c "$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | sort -n | tail -n 1 | awk '{ printf "%.1f", $1 / 1000 }')"
+
+if command -v smartctl > /dev/null 2>&1; then
+    vFailed=0
+    for vDisk in /dev/sd? /dev/nvme?n1; do
+        [ -e "$vDisk" ] || continue
+        smartctl -H "$vDisk" 2>/dev/null | grep -q -E 'PASSED|OK' || vFailed=$((vFailed + 1))
+    done
+    add_metric smart_failed_disks "$vFailed"
+fi
+
+vPayload=$(printf '{"message":"Relevé de %s","metrics":{%s}}' "$vVolume" "$vMetrics")
+if ! curl -fsS -m 10 --retry 3 -X POST -H 'Content-Type: application/json' -d "$vPayload" "$NAS_METRICS_PING_URL" > /dev/null; then
+    echo "Envoi du relevé impossible" >&2
+    exit 1
+fi
+echo "$vPayload"

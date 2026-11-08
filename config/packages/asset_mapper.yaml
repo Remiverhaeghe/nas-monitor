@@ -5,6 +5,12 @@ framework:
             - assets/
         missing_import_mode: strict
 
+# Les tests navigateur tournent hors debug pour que la CSP s'applique : les fichiers restent servis à la volée
+when@test:
+    framework:
+        asset_mapper:
+            server: true
+
 when@prod:
     framework:
         asset_mapper:

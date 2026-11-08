@@ -61,6 +61,22 @@ class Monitor
     #[ORM\Column(length: 16, enumType: NotificationChannel::class, options: ['default' => 'email'])]
     private NotificationChannel $notificationChannel = NotificationChannel::Email;
 
+    /**
+     * Moniteur dont dépend celui-ci (le NAS pour ses services) : tant qu'il est en panne, les alertes de celui-ci attendent.
+     */
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Monitor $parent = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $publicVisible = false;
+
+    /**
+     * @var array<string, float>
+     */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $metricLimits = [];
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
@@ -255,6 +271,47 @@ class Monitor
     public function getLastPingKind(): ?PingKind
     {
         return $this->lastPingKind;
+    }
+
+    public function getParent(): ?Monitor
+    {
+        return $this->parent;
+    }
+
+    public function setParent(?Monitor $pParent): void
+    {
+        $this->parent = $pParent;
+    }
+
+    public function isParentDown(): bool
+    {
+        return MonitorStatus::Down === $this->parent?->getStatus();
+    }
+
+    public function isPublicVisible(): bool
+    {
+        return $this->publicVisible;
+    }
+
+    public function setPublicVisible(bool $pPublicVisible): void
+    {
+        $this->publicVisible = $pPublicVisible;
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    public function getMetricLimits(): array
+    {
+        return $this->metricLimits;
+    }
+
+    /**
+     * @param array<string, float> $pMetricLimits
+     */
+    public function setMetricLimits(array $pMetricLimits): void
+    {
+        $this->metricLimits = $pMetricLimits;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

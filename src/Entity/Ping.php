@@ -44,6 +44,12 @@ class Ping
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $anomaly = null;
 
+    /**
+     * @var array<string, float>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $metrics = null;
+
     public function __construct(
         Monitor $pMonitor,
         PingKind $pKind,
@@ -60,6 +66,22 @@ class Ping
         $this->sizeBytes = $pSizeBytes;
         $this->message = null === $pMessage ? null : mb_substr($pMessage, 0, self::MESSAGE_MAX_LENGTH);
         $this->sourceIp = $pSourceIp;
+    }
+
+    /**
+     * @return array<string, float>|null
+     */
+    public function getMetrics(): ?array
+    {
+        return $this->metrics;
+    }
+
+    /**
+     * @param array<string, float>|null $pMetrics
+     */
+    public function setMetrics(?array $pMetrics): void
+    {
+        $this->metrics = [] === $pMetrics ? null : $pMetrics;
     }
 
     public function getId(): ?int

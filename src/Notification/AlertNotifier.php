@@ -15,7 +15,7 @@ use Symfony\Component\Mime\Email;
 
 /**
  * Envoie les alertes sur le ou les canaux choisis pour le moniteur ; e-mails et ntfy partent par Messenger.
- * Chaque méthode retourne faux si l'alerte n'est pas partie à cause d'une maintenance en cours.
+ * Chaque méthode retourne faux si l'alerte est retenue : maintenance en cours, ou moniteur parent en panne.
  */
 final class AlertNotifier
 {
@@ -119,6 +119,14 @@ final class AlertNotifier
     {
         if ($this->aMaintenanceWindowRepository->isActiveFor($pMonitor, $this->aClock->now())) {
             $this->aLogger->info('Alerte « {subject} » retenue : maintenance en cours', ['subject' => $pSubject]);
+
+            return false;
+        }
+        if ($pMonitor->isParentDown()) {
+            $this->aLogger->info('Alerte « {subject} » retenue : {parent} est en panne', [
+                'subject' => $pSubject,
+                'parent' => $pMonitor->getParent()?->getName(),
+            ]);
 
             return false;
         }

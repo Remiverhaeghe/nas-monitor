@@ -23,6 +23,12 @@
         </testsuite>
     </testsuites>
 
+    <groups>
+        <exclude>
+            <group>screenshots</group>
+        </exclude>
+    </groups>
+
     <source ignoreSuppressionOfDeprecations="true"
             ignoreIndirectDeprecations="true"
             restrictNotices="true"
@@ -40,5 +46,6 @@
     </source>
 
     <extensions>
+        <bootstrap class="Symfony\Component\Panther\ServerExtension" />
     </extensions>
 </phpunit>

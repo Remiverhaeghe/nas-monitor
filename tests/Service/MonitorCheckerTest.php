@@ -2,6 +2,7 @@
 
 namespace App\Tests\Service;
 
+use App\Dto\PingPayload;
 use App\Entity\Incident;
 use App\Entity\MaintenanceWindow;
 use App\Entity\Monitor;
@@ -128,6 +129,45 @@ class MonitorCheckerTest extends KernelTestCase
         self::assertSame(0, $this->remind());
     }
 
+    public function testChildAlertWaitsWhileParentIsDown(): void
+    {
+        $vChild = $this->createMonitorWithSuccessPing('Partage SMB');
+        $vParent = $this->createMonitorWithSuccessPing('NAS');
+        $vChild->setParent($vParent);
+        $this->aEntityManager->flush();
+        $this->aClock->sleep(self::INTERVAL + self::GRACE + 1);
+
+        $this->check();
+
+        self::assertSame(MonitorStatus::Down, $vChild->getStatus());
+        self::assertQueuedEmailCount(1);
+        self::assertEmailSubjectContains(self::getMailerMessage(0), 'En panne : NAS');
+
+        $this->getPingRecorder()->record($vParent, PingKind::Success, null, null);
+        $this->remind();
+
+        self::assertQueuedEmailCount(3);
+        self::assertEmailSubjectContains(self::getMailerMessage(1), 'Rétabli : NAS');
+        self::assertEmailSubjectContains(self::getMailerMessage(2), 'En panne : Partage SMB');
+    }
+
+    public function testMetricAboveLimitIsAnAnomaly(): void
+    {
+        $vMonitor = $this->createMonitorWithSuccessPing('Relevé du NAS');
+        $vMonitor->setMetricLimits(['disk_used_percent' => 90.0]);
+        $this->aEntityManager->flush();
+
+        $vPayload = new PingPayload();
+        $vPayload->metrics = ['disk_used_percent' => 93, 'temperature_c' => 41.5];
+        $vPing = $this->getPingRecorder()->record($vMonitor, PingKind::Success, $vPayload, null);
+
+        self::assertSame(['disk_used_percent' => 93.0, 'temperature_c' => 41.5], $vPing->getMetrics());
+        self::assertSame('disk_used_percent à 93 (maximum 90)', $vPing->getAnomaly());
+        self::assertSame(MonitorStatus::Up, $vMonitor->getStatus());
+        self::assertQueuedEmailCount(1);
+        self::assertEmailSubjectContains(self::getMailerMessage(0), 'Anomalie : Relevé du NAS');
+    }
+
     private function remind(): int
     {
         $rCount = static::getContainer()->get(IncidentReminder::class)->remind();
@@ -135,9 +175,9 @@ class MonitorCheckerTest extends KernelTestCase
         return $rCount;
     }
 
-    private function createMonitorWithSuccessPing(): Monitor
+    private function createMonitorWithSuccessPing(string $pName = 'Sauvegarde restic'): Monitor
     {
-        $rMonitor = new Monitor('Sauvegarde restic', MonitorType::Heartbeat, self::INTERVAL, self::GRACE, $this->aClock->now());
+        $rMonitor = new Monitor($pName, MonitorType::Heartbeat, self::INTERVAL, self::GRACE, $this->aClock->now());
         $this->aEntityManager->persist($rMonitor);
         $this->aEntityManager->flush();
         $this->getPingRecorder()->record($rMonitor, PingKind::Success, null, null);

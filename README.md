@@ -4,9 +4,19 @@
 
 Supervision des sauvegardes et des tâches planifiées d'un NAS auto-hébergé.
 
-Chaque tâche signale son exécution par un appel HTTP. L'application contrôle aussi elle-même des sites web, des ports TCP et des certificats TLS. Si un signal manque dans le délai prévu ou si un contrôle échoue, un incident est ouvert et une alerte est envoyée par e-mail ou par ntfy.
+Chaque tâche signale son exécution par un appel HTTP. L'application contrôle aussi elle-même des sites web, des ports TCP, des certificats TLS, la résolution DNS et la réponse au ping. Une page de statut publique, facultative, montre l'état des services choisis. Si un signal manque dans le délai prévu ou si un contrôle échoue, un incident est ouvert et une alerte est envoyée par e-mail ou par ntfy.
 
 Stack : PHP 8.5, Symfony 8, PostgreSQL 16, FrankenPHP, Docker Compose. Basé sur [dunglas/symfony-docker](https://github.com/dunglas/symfony-docker).
+
+## Aperçu
+
+Captures réalisées avec des données de démonstration.
+
+![Tableau de bord des moniteurs](docs/images/tableau-de-bord.png)
+
+![Page d'un moniteur avec ses courbes de tendance](docs/images/moniteur.png)
+
+![Page de statut publique](docs/images/statut-public.png)
 
 ## Démarrage
 
@@ -36,7 +46,7 @@ Après création d'un moniteur, le tableau de bord affiche une seule fois son je
 curl -fsS -m 10 --retry 3 -X POST https://<hôte>/ping/<jeton>
 ```
 
-`/ping/<jeton>/start` marque le début, `/ping/<jeton>/fail` un échec. Un corps JSON facultatif précise `duration_ms`, `size_bytes` et `message`.
+`/ping/<jeton>/start` marque le début, `/ping/<jeton>/fail` un échec. Un corps JSON facultatif précise `duration_ms`, `size_bytes`, `message` et des `metrics` libres (`{"disk_used_percent": 82}`).
 
 ## API
 
@@ -67,6 +77,12 @@ Les tests utilisent la base `app_test`, à créer une fois :
 ```bash
 docker compose exec php bin/console doctrine:database:create --env=test
 docker compose exec php bin/console doctrine:migrations:migrate --env=test --no-interaction
+```
+
+La suite comprend des parcours dans un vrai navigateur (Panther et Chromium, présents dans l'image de développement). Ils vérifient que les pages s'affichent sans violation de la CSP. Les captures de cette page ne font pas partie de la suite par défaut, pour les régénérer :
+
+```bash
+docker compose exec php bin/phpunit --group screenshots
 ```
 
 ## Configuration
@@ -100,6 +116,7 @@ Les valeurs propres à une installation vont dans `.env.local`, non versionné.
 | [docs/securite.md](docs/securite.md) | Protections en place |
 | [docs/simulation.md](docs/simulation.md) | Simulation locale du NAS avec tâches de sauvegarde |
 | [docs/sauvegarde.md](docs/sauvegarde.md) | Sauvegarde et restauration de la base |
+| [docs/nas.md](docs/nas.md) | Relevé de l'état du NAS, dépendances, contrôles ICMP et DNS |
 | [CHANGELOG.md](CHANGELOG.md) | Évolutions |
 
 ## Licence

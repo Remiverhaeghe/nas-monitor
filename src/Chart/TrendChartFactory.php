@@ -7,6 +7,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final class TrendChartFactory
 {
+    private const MAX_METRIC_CHARTS = 6;
+
     private \DateTimeZone $aTimezone;
 
     public function __construct(
@@ -31,6 +33,34 @@ final class TrendChartFactory
         $rChart = TrendChart::build($vSeries, 's', '%.1f', $this->aTimezone);
 
         return $rChart;
+    }
+
+    /**
+     * Une courbe par métrique reçue, au plus MAX_METRIC_CHARTS, par ordre alphabétique.
+     *
+     * @param list<Ping> $pPings
+     *
+     * @return array<string, TrendChart>
+     */
+    public function metrics(array $pPings): array
+    {
+        $vSeries = [];
+        foreach ($pPings as $vPing) {
+            foreach ($vPing->getMetrics() ?? [] as $vName => $vValue) {
+                $vSeries[$vName][] = ['date' => $vPing->getReceivedAt(), 'value' => $vValue];
+            }
+        }
+        ksort($vSeries);
+
+        $rCharts = [];
+        foreach (\array_slice($vSeries, 0, self::MAX_METRIC_CHARTS, true) as $vName => $vPoints) {
+            $vChart = TrendChart::build($vPoints, '', '%.1f', $this->aTimezone);
+            if (null !== $vChart) {
+                $rCharts[(string) $vName] = $vChart;
+            }
+        }
+
+        return $rCharts;
     }
 
     /**

@@ -34,6 +34,8 @@ class MonitorRepository extends ServiceEntityRepository
             ->where('m.paused = false')
             ->andWhere('m.type <> :heartbeat')
             ->setParameter('heartbeat', MonitorType::Heartbeat->value)
+            ->addSelect('CASE WHEN m.parent IS NULL THEN 0 ELSE 1 END AS HIDDEN childFirst')
+            ->orderBy('childFirst')
             ->getQuery()
             ->getResult();
 
@@ -51,6 +53,8 @@ class MonitorRepository extends ServiceEntityRepository
             ->where('m.paused = false')
             ->andWhere('m.status IN (:statuses)')
             ->setParameter('statuses', [MonitorStatus::Up->value, MonitorStatus::Late->value])
+            ->addSelect('CASE WHEN m.parent IS NULL THEN 0 ELSE 1 END AS HIDDEN childFirst')
+            ->orderBy('childFirst')
             ->getQuery()
             ->getResult();
 

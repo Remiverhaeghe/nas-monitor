@@ -122,6 +122,21 @@ th {
     font-weight: 600;
 }
 
+.status-summary {
+    padding: 12px 16px;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.status-summary.up {
+    color: var(--up);
+}
+
+.status-summary.down {
+    color: var(--down);
+}
+
 .group-row th {
     color: var(--text);
     background: var(--bg);

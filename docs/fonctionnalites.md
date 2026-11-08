@@ -8,6 +8,8 @@
 | Site web (HTTP) | Requête `GET`, succès si le code est inférieur à 400 | URL complète |
 | Port TCP | Ouverture d'une connexion | `hôte:port` |
 | Certificat TLS | Vérification du certificat, échec s'il expire dans moins de `TLS_WARNING_DAYS` jours | `hôte:port` |
+| Résolution DNS | Le nom doit résoudre, vers l'adresse attendue si elle est précisée | `nom` ou `nom=adresse` |
+| Ping ICMP | Requête d'écho, réponse attendue en 3 secondes | hôte ou adresse IPv4 |
 
 Pour une tâche planifiée, l'intervalle est la durée maximale entre deux pings de succès. Pour un contrôle actif, c'est la fréquence du contrôle. Chaque contrôle actif est enregistré comme un ping, avec sa durée et son résultat.
 
@@ -32,6 +34,7 @@ Un ping `start` est enregistré sans modifier le statut.
 - Un moniteur reste dans un seul incident tant qu'il est en panne : une seule alerte est envoyée
 - La mise en pause ferme l'incident en cours sans alerte
 - L'état « En retard » n'envoie pas d'alerte
+- Tant que le moniteur parent est en panne, les alertes d'un moniteur dépendant attendent ; une panne encore en cours au retour du parent est signalée dans la minute (voir [nas.md](nas.md))
 
 Chaque moniteur choisit son canal : e-mail, ntfy (notification sur le téléphone) ou les deux. Les dates des alertes sont à l'heure de Paris.
 
@@ -54,6 +57,10 @@ Chaque lundi à 6 h UTC, un rapport part à `ALERT_EMAIL_TO` : disponibilité, n
 ## Mise à jour en direct
 
 Le tableau de bord et la page d'un moniteur se mettent à jour d'eux-mêmes à chaque ping, changement de statut, incident ou maintenance. Le serveur ne diffuse qu'un signal de rafraîchissement, sans donnée ; la page se recharge avec les droits de l'utilisateur connecté. Le jeton affiché après une création ou une régénération reste à l'écran.
+
+## Métriques
+
+Un ping peut porter jusqu'à 20 métriques numériques (`metrics`). Les seuils du moniteur (`disk_used_percent=90, temperature_c=60`) fixent un maximum par métrique : une valeur au-dessus est une anomalie. Les métriques reçues sont tracées sur la page du moniteur et exposées par l'API.
 
 ## Résultats anormaux
 
@@ -78,6 +85,7 @@ Le ping reste un succès et le statut ne change pas, mais l'anomalie est enregis
 - **Connexion** : adresse e-mail et mot de passe, cinq tentatives par quart d'heure, puis code TOTP ou code de secours si la double authentification est activée
 - **Maintenances** : plages en cours et à venir, planification et suppression
 - **Journal** : 200 dernières actions avec date, auteur, détail et adresse IP
+- **Statut public** (`/status`, sans connexion) : moniteurs marqués visibles, avec statut et disponibilité sur 30 jours, sans cible ni message ; actualisation chaque minute
 - **Tableau de bord** : nombre de moniteurs par statut, moniteurs par groupe triés par gravité, début de l'incident en cours, disponibilité sur 7 jours
 - **Moniteur** : configuration, courbes de durée et de taille des 50 derniers succès, 20 derniers incidents, 50 derniers pings
 - **Création et modification** : nom, type (non modifiable ensuite), cible, groupe, intervalle et délai de grâce en minutes, canal d'alerte
@@ -90,7 +98,7 @@ Lecture seule, authentification par en-tête `Authorization: Bearer <jeton>`. Da
 | Route | Contenu |
 |---|---|
 | `GET /api/monitors` | Moniteurs avec groupe, statut et incident en cours |
-| `GET /api/monitors/{id}` | Moniteur, 20 derniers incidents, 50 derniers pings |
+| `GET /api/monitors/{id}` | Moniteur, 20 derniers incidents, 50 derniers pings avec leurs métriques |
 
 ## Commandes
 
@@ -103,6 +111,7 @@ Lecture seule, authentification par en-tête `Authorization: Bearer <jeton>`. Da
 | `app:user:backup-codes <email>` | Remplace les codes de secours ; les anciens cessent de fonctionner |
 | `app:user:totp-disable <email>` | Désactive la double authentification, par exemple après la perte du téléphone |
 | `app:report:send` | Envoie tout de suite le rapport des 7 derniers jours |
+| `app:totp:rotate-key` | Rechiffre les secrets TOTP avec une nouvelle clé et l'affiche, à reporter ensuite dans `TOTP_ENCRYPTION_KEY` |
 
 ## Journal des actions
 

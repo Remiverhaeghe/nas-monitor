@@ -34,7 +34,10 @@ Les jetons vont dans `simulation/tokens.env`, non versionné :
 ```
 PING_TOKEN_BACKUP=<jeton de la sauvegarde>
 PING_TOKEN_SYNC=<jeton de la synchronisation>
+PING_TOKEN_METRICS=<jeton du relevé, moniteur créé de la même façon>
 ```
+
+Le service `metrics` applique au conteneur lui-même le script de relevé du NAS (voir [nas.md](nas.md)).
 
 Lancement des tâches :
 

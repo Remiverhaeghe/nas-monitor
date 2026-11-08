@@ -73,6 +73,20 @@ class PingControllerTest extends WebTestCase
         self::assertSame(0, $this->getEntityManager()->getRepository(Ping::class)->count([]));
     }
 
+    public function testMetricsAreStoredAndInvalidOnesRejected(): void
+    {
+        [, $vToken] = $this->createMonitor();
+
+        $this->aClient->jsonRequest('POST', '/ping/'.$vToken, ['metrics' => ['Disque' => 'plein']]);
+        self::assertResponseStatusCodeSame(422);
+
+        $this->aClient->jsonRequest('POST', '/ping/'.$vToken, ['metrics' => ['disk_used_percent' => 82, 'temperature_c' => 44.5]]);
+        self::assertResponseIsSuccessful();
+
+        $vPing = $this->getEntityManager()->getRepository(Ping::class)->findOneBy([]);
+        self::assertSame(['disk_used_percent' => 82.0, 'temperature_c' => 44.5], $vPing?->getMetrics());
+    }
+
     public function testGetIsNotAllowed(): void
     {
         [, $vToken] = $this->createMonitor();

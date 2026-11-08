@@ -8,6 +8,8 @@ enum MonitorType: string
     case Http = 'http';
     case Tcp = 'tcp';
     case Tls = 'tls';
+    case Dns = 'dns';
+    case Icmp = 'icmp';
 
     public function label(): string
     {
@@ -16,6 +18,8 @@ enum MonitorType: string
             self::Http => 'Site web (HTTP)',
             self::Tcp => 'Port TCP',
             self::Tls => 'Certificat TLS',
+            self::Dns => 'Résolution DNS',
+            self::Icmp => 'Ping ICMP',
         };
 
         return $rLabel;
