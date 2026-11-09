@@ -18,7 +18,7 @@ Chaque sauvegarde envoie un ping de début, puis un ping de succès avec la dur�
 ## Lister les sauvegardes
 
 ```bash
-docker compose -f compose.yaml -f compose.prod.yaml exec db-backup ls -lt /backups
+docker compose --env-file .env.nas -f compose.yaml -f compose.prod.yaml exec db-backup ls -lt /backups
 ```
 
 ## Restaurer
@@ -26,9 +26,9 @@ docker compose -f compose.yaml -f compose.prod.yaml exec db-backup ls -lt /backu
 Arrêter l'application et le worker pour qu'aucune écriture n'ait lieu pendant la restauration, puis :
 
 ```bash
-docker compose -f compose.yaml -f compose.prod.yaml stop php worker
-docker compose -f compose.yaml -f compose.prod.yaml exec db-backup pg_restore --clean --if-exists --no-owner --dbname="$PGDATABASE" /backups/nas-monitor-AAAAMMJJ-HHMMSS.dump
-docker compose -f compose.yaml -f compose.prod.yaml start php worker
+docker compose --env-file .env.nas -f compose.yaml -f compose.prod.yaml stop php worker
+docker compose --env-file .env.nas -f compose.yaml -f compose.prod.yaml exec db-backup pg_restore --clean --if-exists --no-owner --dbname="$PGDATABASE" /backups/nas-monitor-AAAAMMJJ-HHMMSS.dump
+docker compose --env-file .env.nas -f compose.yaml -f compose.prod.yaml start php worker
 ```
 
 ## Copie hors du NAS

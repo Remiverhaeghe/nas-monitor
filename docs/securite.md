@@ -43,7 +43,7 @@
 - [x] Abonnement anonyme refusé et API de liste des abonnés désactivée dans le hub (le mode `playground` du développement les autorise)
 - [x] Audience des jetons fixée sur l'URL publique du hub (`resource_identifier`)
 - [x] Aucune donnée dans les messages : un simple signal de rafraîchissement
-- [ ] `CADDY_MERCURE_JWT_SECRET` à définir en production, la valeur par défaut du gabarit est publique
+- [x] `CADDY_MERCURE_JWT_SECRET` obligatoire en production : Compose refuse de démarrer sans lui
 
 ## En-têtes HTTP (production)
 
@@ -57,7 +57,17 @@
 - [x] Version de PHP masquée (`expose_php = 0`)
 - [x] `session.upload_progress.enabled = 0`, suite à l'avis de sécurité PHP du 23/10/2026
 - [x] Proxys de confiance explicites (`TRUSTED_PROXIES`) : sans eux, l'en-tête `X-Forwarded-For` est ignoré et ne permet pas de contourner la limite par IP
+- [x] `APP_SECRET`, `TOTP_ENCRYPTION_KEY`, `POSTGRES_PASSWORD` et `CADDY_MERCURE_JWT_SECRET` obligatoires en production, à fournir dans `.env.nas`, non versionné, avec `--env-file .env.nas`
 - [ ] Accès depuis l'extérieur par VPN uniquement
+
+## Conteneurs (production)
+
+- [x] Application et worker sous le compte `www-data`, sans droit système (`cap_drop: ALL`), sauf l'écoute sur les ports 80 et 443
+- [x] Base de données limitée aux droits nécessaires à son démarrage
+- [x] Service de sauvegarde sans droit système, système de fichiers en lecture seule
+- [x] Pas d'élévation de privilèges (`no-new-privileges`) sur tous les services
+- [x] Base de données non publiée sur un port
+- [ ] Système de fichiers en lecture seule pour l'application et le worker
 
 ## Chaîne d'approvisionnement
 
@@ -71,4 +81,5 @@ La CI tourne à chaque push, et chaque jour à 4 h UTC à la demande du dépôt 
 
 - [x] Version de PHP comparée à la dernière version corrective publiée sur php.net, échec si elle est en retard
 - [x] `composer audit` sur les dépendances
+- [x] Gitleaks sur les secrets du dépôt
 - [x] Alertes de sécurité Dependabot relevées dans le rapport de veille
