@@ -4,15 +4,25 @@ x-prod-build: &prod-build
   context: .
   target: frankenphp_prod
 
+# Secrets obligatoires : Compose refuse de démarrer si l'un manque, au lieu de garder une valeur publique du gabarit
+x-no-new-privileges: &no-new-privileges
+  - no-new-privileges:true
+
 services:
   php:
     image: ${IMAGES_PREFIX:-}app-php-prod
     build: *prod-build
+    security_opt: *no-new-privileges
+    cap_drop: [ALL]
+    # Écoute sur les ports 80 et 443
+    cap_add: [NET_BIND_SERVICE]
     environment:
-      APP_SECRET: ${APP_SECRET}
-      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
-      MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET}
-      MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET obligatoire}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:?TOTP_ENCRYPTION_KEY obligatoire}
+      MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:?CADDY_MERCURE_JWT_SECRET obligatoire}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:?CADDY_MERCURE_JWT_SECRET obligatoire}
+      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:?CADDY_MERCURE_JWT_SECRET obligatoire}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obligatoire}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-16}&charset=${POSTGRES_CHARSET:-utf8}
       CADDY_SERVER_EXTRA_DIRECTIVES: |
         header {
           X-Content-Type-Options "nosniff"
@@ -26,17 +36,19 @@ services:
   worker:
     image: ${IMAGES_PREFIX:-}app-php-prod
     build: *prod-build
+    security_opt: *no-new-privileges
+    cap_drop: [ALL]
     command: ["php", "bin/console", "messenger:consume", "async", "scheduler_default", "--time-limit=3600", "--memory-limit=128M"]
     restart: unless-stopped
     depends_on:
       php:
         condition: service_healthy
     environment:
-      APP_SECRET: ${APP_SECRET}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-16}&charset=${POSTGRES_CHARSET:-utf8}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET obligatoire}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obligatoire}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-16}&charset=${POSTGRES_CHARSET:-utf8}
       MERCURE_URL: http://php/.well-known/mercure
       MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-443}/.well-known/mercure}
-      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET}
+      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:?CADDY_MERCURE_JWT_SECRET obligatoire}
       MERCURE_JWT_ISSUER: ${CADDY_MERCURE_JWT_ISSUER:-https://localhost}
     # Défaillant si la boucle du worker n'a pas tourné depuis 3 minutes (fichier touché par WorkerHeartbeatListener)
     healthcheck:
@@ -46,10 +58,22 @@ services:
       retries: 2
       start_period: 60s
 
+  database:
+    security_opt: *no-new-privileges
+    cap_drop: [ALL]
+    # Droits nécessaires à l'initialisation du dossier de données et au passage au compte postgres
+    cap_add: [CHOWN, DAC_READ_SEARCH, FOWNER, SETGID, SETUID]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obligatoire}
+
   # Même image que la base, pour que pg_dump corresponde à la version du serveur
   db-backup:
     image: postgres:16-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
     entrypoint: ["sh", "/scripts/backup-db"]
+    security_opt: *no-new-privileges
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
     restart: unless-stopped
     depends_on:
       database:
@@ -57,7 +81,7 @@ services:
     environment:
       PGHOST: database
       PGUSER: ${POSTGRES_USER:-app}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obligatoire}
       PGDATABASE: ${POSTGRES_DB:-app}
       DB_BACKUP_INTERVAL_SECONDS: ${DB_BACKUP_INTERVAL_SECONDS:-86400}
       DB_BACKUP_KEEP: ${DB_BACKUP_KEEP:-14}

@@ -2,6 +2,15 @@
 
 ## Non publié
 
+### Documentation
+- Modèle `.env.example` des secrets de production et `CLAUDE.md`
+
+### Durcissement de la production
+- Secrets obligatoires : Compose refuse de démarrer sur une valeur manquante
+- Conteneurs sans droits système superflus, sans élévation de privilèges
+- Service de sauvegarde en lecture seule
+- Recherche de secrets par Gitleaks en CI
+
 ### Tests dans un navigateur
 - Parcours de bout en bout avec Panther et Chromium, serveur hors debug pour que la CSP s'applique
 - Contrôle des erreurs de la console et de la confirmation avant suppression
