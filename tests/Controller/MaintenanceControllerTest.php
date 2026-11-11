@@ -37,10 +37,15 @@ class MaintenanceControllerTest extends WebTestCase
 
     public function testPlanAndDeleteMaintenance(): void
     {
+        // La liste ne montre que les plages à venir : les dates doivent rester dans le futur.
+        $vParis = new \DateTimeZone('Europe/Paris');
+        $vStart = new \DateTimeImmutable('tomorrow 22:00', $vParis);
+        $vEnd = $vStart->modify('+90 minutes');
+
         $vCrawler = $this->aClient->request('GET', '/maintenances');
         $this->aClient->submit($vCrawler->selectButton('Planifier')->form([
-            'maintenance_form[startsAt]' => '2026-11-08T22:00',
-            'maintenance_form[endsAt]' => '2026-11-08T23:30',
+            'maintenance_form[startsAt]' => $vStart->format('Y-m-d\TH:i'),
+            'maintenance_form[endsAt]' => $vEnd->format('Y-m-d\TH:i'),
             'maintenance_form[reason]' => 'Remplacement d\'un disque',
         ]));
 
@@ -48,7 +53,10 @@ class MaintenanceControllerTest extends WebTestCase
         $vWindow = $this->aEntityManager->getRepository(MaintenanceWindow::class)->findOneBy([]);
         self::assertNotNull($vWindow);
         self::assertNull($vWindow->getMonitor());
-        self::assertSame('2026-11-08 21:00', $vWindow->getStartsAt()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i'));
+        self::assertSame(
+            $vStart->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i'),
+            $vWindow->getStartsAt()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i'),
+        );
 
         $vCrawler = $this->aClient->followRedirect();
         self::assertSelectorTextContains('table', 'Remplacement d\'un disque');
