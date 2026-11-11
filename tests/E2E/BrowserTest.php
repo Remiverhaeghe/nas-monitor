@@ -10,9 +10,9 @@ use App\Entity\User;
 use App\Enum\MonitorType;
 use Doctrine\ORM\EntityManagerInterface;
 use Facebook\WebDriver\WebDriverBy;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Panther\Client;
 use Symfony\Component\Panther\PantherTestCase;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * Parcours dans un vrai navigateur (Chromium), serveur hors debug pour que la CSP s'applique.
