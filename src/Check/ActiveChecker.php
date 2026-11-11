@@ -20,6 +20,8 @@ final class ActiveChecker
         private readonly ClockInterface $aClock,
         #[Autowire(env: 'int:TLS_WARNING_DAYS')]
         private readonly int $aTlsWarningDays,
+        private readonly PingTransport $aPingTransport = new SocketPingTransport(),
+        private readonly TlsConnector $aTlsConnector = new StreamTlsConnector(),
     ) {
     }
 
@@ -138,12 +140,45 @@ final class ActiveChecker
     private function checkDns(string $pTarget): array
     {
         $vHost = explode('=', $pTarget, 2)[0];
+        $rResult = self::evaluateDns($pTarget, self::extractAddresses(@dns_get_record($vHost, \DNS_A | \DNS_AAAA) ?: []));
+
+        return $rResult;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $pRecords enregistrements renvoyés par dns_get_record()
+     *
+     * @return list<string>
+     */
+    public static function extractAddresses(array $pRecords): array
+    {
         $vAddresses = [];
-        foreach (@dns_get_record($vHost, \DNS_A | \DNS_AAAA) ?: [] as $vRecord) {
+        foreach ($pRecords as $vRecord) {
             $vAddresses[] = (string) ($vRecord['ip'] ?? $vRecord['ipv6'] ?? '');
         }
 
-        $rResult = self::evaluateDns($pTarget, array_values(array_filter($vAddresses)));
+        $rAddresses = array_values(array_filter($vAddresses));
+
+        return $rAddresses;
+    }
+
+    /**
+     * Lit le certificat présenté par le serveur sur un flux TLS déjà ouvert, puis ferme le flux.
+     *
+     * @param resource $pStream
+     *
+     * @return array{bool, string}
+     */
+    public function evaluatePeerCertificate($pStream): array
+    {
+        $vParams = stream_context_get_params($pStream);
+        fclose($pStream);
+        $vCertificate = openssl_x509_parse($vParams['options']['ssl']['peer_certificate']);
+        if (false === $vCertificate) {
+            return [false, 'Certificat illisible'];
+        }
+
+        $rResult = self::evaluateCertificate((int) $vCertificate['validTo_time_t'], $this->aClock->now(), $this->aTlsWarningDays);
 
         return $rResult;
     }
@@ -161,25 +196,10 @@ final class ActiveChecker
         }
 
         $vSocket = @socket_create(\AF_INET, \SOCK_DGRAM, 1);
-        if (false === $vSocket) {
-            return [false, 'Socket ICMP indisponible : '.socket_strerror(socket_last_error())];
-        }
-
         try {
-            socket_set_option($vSocket, \SOL_SOCKET, \SO_RCVTIMEO, ['sec' => self::ICMP_TIMEOUT_SECONDS, 'usec' => 0]);
-            $vPacket = self::buildEchoRequest(random_int(1, 0xFFFF));
-            if (false === @socket_sendto($vSocket, $vPacket, \strlen($vPacket), 0, $vAddress, 0)) {
-                return [false, 'Envoi du ping impossible : '.socket_strerror(socket_last_error($vSocket))];
-            }
-
-            $vReply = '';
-            $vFrom = '';
-            $vPort = 0;
-            if (false === @socket_recvfrom($vSocket, $vReply, 1500, 0, $vFrom, $vPort)) {
-                return [false, \sprintf('Pas de réponse de %s en %d s', $vAddress, self::ICMP_TIMEOUT_SECONDS)];
-            }
-        } finally {
-            socket_close($vSocket);
+            $vReply = $this->aPingTransport->echo($vAddress, self::buildEchoRequest(random_int(1, 0xFFFF)), self::ICMP_TIMEOUT_SECONDS);
+        } catch (\RuntimeException $vException) {
+            return [false, $vException->getMessage()];
         }
 
         $vType = '' === $vReply ? -1 : \ord($vReply[0]);
@@ -211,34 +231,14 @@ final class ActiveChecker
     private function checkTls(string $pTarget): array
     {
         [$vHost, $vPort] = self::splitHostPort($pTarget);
-        $vContext = stream_context_create(['ssl' => [
-            'capture_peer_cert' => true,
-            'verify_peer' => true,
-            'verify_peer_name' => true,
-            'peer_name' => $vHost,
-            'SNI_enabled' => true,
-        ]]);
 
-        $vSocket = @stream_socket_client(
-            \sprintf('ssl://%s:%d', $vHost, $vPort),
-            $vErrorCode,
-            $vErrorMessage,
-            self::TIMEOUT_SECONDS,
-            \STREAM_CLIENT_CONNECT,
-            $vContext,
-        );
-        if (false === $vSocket) {
-            return [false, \sprintf('Connexion TLS impossible (%d) : %s', $vErrorCode, $vErrorMessage)];
+        try {
+            $vSocket = $this->aTlsConnector->connect($vHost, $vPort, self::TIMEOUT_SECONDS);
+        } catch (\RuntimeException $vException) {
+            return [false, $vException->getMessage()];
         }
 
-        $vParams = stream_context_get_params($vSocket);
-        fclose($vSocket);
-        $vCertificate = openssl_x509_parse($vParams['options']['ssl']['peer_certificate']);
-        if (false === $vCertificate) {
-            return [false, 'Certificat illisible'];
-        }
-
-        $rResult = self::evaluateCertificate((int) $vCertificate['validTo_time_t'], $this->aClock->now(), $this->aTlsWarningDays);
+        $rResult = $this->evaluatePeerCertificate($vSocket);
 
         return $rResult;
     }

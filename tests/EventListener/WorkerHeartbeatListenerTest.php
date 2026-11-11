@@ -38,4 +38,13 @@ class WorkerHeartbeatListenerTest extends TestCase
         clearstatcache();
         self::assertSame(1000, filemtime($this->aFile));
     }
+
+    public function testUnwritableFileOnlyLogsAWarning(): void
+    {
+        $vListener = new WorkerHeartbeatListener('/dossier/inexistant/worker-heartbeat', new NullLogger());
+
+        $vListener(new WorkerRunningEvent(new Worker([], new MessageBus()), true));
+
+        $this->addToAssertionCount(1);
+    }
 }

@@ -2,6 +2,12 @@
 
 ## Non publié
 
+### Tests
+- Couverture des lignes portée de 79 % à plus de 99 %, seuil de la CI relevé à 99 %
+- Commandes console, gestionnaires du planificateur, validateurs, dépôts et fixtures testés
+- Contrôles ICMP et TLS isolés derrière deux interfaces (`PingTransport`, `TlsConnector`) pour simuler les pannes du système
+- Correction d'un test qui dépendait de la date du jour
+
 ### Documentation
 - Modèle `.env.example` des secrets de production et `CLAUDE.md`
 

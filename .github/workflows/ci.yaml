@@ -90,7 +90,7 @@ jobs:
             exit($vPercent < (int) getenv("MIN_COVERAGE") ? 1 : 0);
           '
         env:
-          MIN_COVERAGE: 80
+          MIN_COVERAGE: 99
       # Les tests partagent la base de test : un seul processus
       - name: Mutation testing
         if: github.event_name != 'pull_request'
