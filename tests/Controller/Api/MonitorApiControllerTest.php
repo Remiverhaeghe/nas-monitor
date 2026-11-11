@@ -7,6 +7,7 @@ use App\Entity\Incident;
 use App\Entity\Monitor;
 use App\Entity\Ping;
 use App\Entity\User;
+use App\Enum\IncidentCause;
 use App\Enum\MonitorType;
 use App\Enum\PingKind;
 use Doctrine\ORM\EntityManagerInterface;
@@ -65,6 +66,19 @@ class MonitorApiControllerTest extends WebTestCase
         $vDetail = $this->getJson('/api/monitors/'.$vMonitor->getId());
         self::assertSame(1200, $vDetail['pings'][0]['duration_ms']);
         self::assertSame([], $vDetail['incidents']);
+    }
+
+    public function testOpenIncidentIsExposedInTheList(): void
+    {
+        $vMonitor = new Monitor('NAS', MonitorType::Heartbeat, 3600, 600, new \DateTimeImmutable('-1 day'));
+        $this->aEntityManager->persist($vMonitor);
+        $this->aEntityManager->persist(new Incident($vMonitor, IncidentCause::Missed, new \DateTimeImmutable('-2 hours')));
+        $this->aEntityManager->flush();
+
+        $vList = $this->getJson('/api/monitors');
+
+        self::assertSame('missed', $vList['monitors'][0]['open_incident']['cause']);
+        self::assertNull($vList['monitors'][0]['open_incident']['resolved_at']);
     }
 
     /**

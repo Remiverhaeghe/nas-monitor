@@ -2,6 +2,7 @@
 
 namespace App\Tests\Controller;
 
+use App\Controller\MonitorController;
 use App\Entity\Incident;
 use App\Entity\Monitor;
 use App\Entity\Ping;
@@ -14,6 +15,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class MonitorControllerTest extends WebTestCase
 {
@@ -261,5 +263,34 @@ class MonitorControllerTest extends WebTestCase
         $rMonitor = $this->aEntityManager->getRepository(Monitor::class)->findOneBy(['pingTokenHash' => Monitor::hashToken($pToken)]);
 
         return $rMonitor;
+    }
+
+    public function testEditThatChangesTheStatusOpensAnIncident(): void
+    {
+        $vNow = new \DateTimeImmutable();
+        $vMonitor = new Monitor('Sauvegarde restic', MonitorType::Heartbeat, 4 * 3600, 600, $vNow->modify('-1 day'));
+        $vMonitor->recordPing(PingKind::Success, $vNow->modify('-2 hours'));
+        $this->aEntityManager->persist($vMonitor);
+        $this->aEntityManager->flush();
+
+        $vCrawler = $this->aClient->request('GET', '/monitors/'.$vMonitor->getId().'/edit');
+        $this->aClient->submit($vCrawler->selectButton('Enregistrer')->form([
+            'monitor_form[intervalMinutes]' => '60',
+            'monitor_form[graceMinutes]' => '0',
+        ]));
+
+        self::assertResponseRedirects('/monitors/'.$vMonitor->getId());
+        self::assertSame(MonitorStatus::Down, $this->reload($vMonitor)->getStatus());
+    }
+
+    public function testActiveMonitorHasNoPingTokenToRotate(): void
+    {
+        $vMonitor = new Monitor('Port 443', MonitorType::Tcp, 300, 60, new \DateTimeImmutable());
+        $vMonitor->setTarget('nas.local:443');
+        $this->aEntityManager->persist($vMonitor);
+        $this->aEntityManager->flush();
+
+        $this->expectException(NotFoundHttpException::class);
+        static::getContainer()->get(MonitorController::class)->rotateToken($vMonitor);
     }
 }

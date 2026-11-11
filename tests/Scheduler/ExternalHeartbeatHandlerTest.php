@@ -42,4 +42,13 @@ class ExternalHeartbeatHandlerTest extends TestCase
 
         self::assertSame(self::URL.'/fail', $vResponse->getRequestUrl());
     }
+
+    public function testUnreachableServiceIsLoggedWithoutThrowing(): void
+    {
+        $vHttpClient = new MockHttpClient(static fn (): MockResponse => new MockResponse('', ['error' => 'connexion refusée']));
+
+        (new ExternalHeartbeatHandler($vHttpClient, $this->createStub(Connection::class), new NullLogger(), self::URL))(new ExternalHeartbeatMessage());
+
+        self::assertSame(1, $vHttpClient->getRequestsCount());
+    }
 }
