@@ -3,6 +3,12 @@
 ## Non publié
 
 ### Tests
+- Tests de mutation : valeurs exactes pour les courbes, les contrôles actifs, le détecteur d'anomalies et les plages de maintenance (indice 81 % → 86 %), délai par mutant porté à 10 s
+- Tests des journaux, de l'ordre de traitement et des alertes (PingRecorder, MonitorChecker, ActiveCheckRunner, IncidentReminder, jetons d'API) avec un logger de test
+- Contrôle ping : fonctions socket isolées derrière `DatagramSocket` (testables sans réseau, vrais sockets UDP en test) ; options TLS exposées pour être vérifiées
+- Contrôle DNS : résolution isolée derrière `DnsResolver`
+- Correction : socket ICMP créé et jamais fermé dans le contrôle ping
+- Script `bin/prepare-parallel-test-dbs.sh` pour lancer Infection sur plusieurs threads
 - Couverture des lignes portée de 79 % à plus de 99 %, seuil de la CI relevé à 99 %
 - Commandes console, gestionnaires du planificateur, validateurs, dépôts et fixtures testés
 - Contrôles ICMP et TLS isolés derrière deux interfaces (`PingTransport`, `TlsConnector`) pour simuler les pannes du système

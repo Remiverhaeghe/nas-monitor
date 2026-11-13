@@ -62,6 +62,32 @@ class MaintenanceWindowTest extends TestCase
         self::assertFalse($vWindow->isActive($this->paris('2026-11-01 01:00'), $this->aParis));
     }
 
+    public function testScheduleDescriptionForEachRecurrence(): void
+    {
+        self::assertSame(
+            'du 08/11/2026 02:00 au 08/11/2026 04:00',
+            $this->window('2026-11-08 02:00', '2026-11-08 04:00', MaintenanceRecurrence::None)->describeSchedule($this->aParis),
+        );
+        self::assertSame(
+            'chaque jour de 02:00 à 04:00, à partir du 08/11/2026',
+            $this->window('2026-11-08 02:00', '2026-11-08 04:00', MaintenanceRecurrence::Daily)->describeSchedule($this->aParis),
+        );
+        self::assertSame(
+            'chaque samedi de 22:00 à dimanche 02:00, à partir du 07/11/2026',
+            $this->window('2026-11-07 22:00', '2026-11-08 02:00', MaintenanceRecurrence::Weekly)->describeSchedule($this->aParis),
+        );
+    }
+
+    public function testEndOfAWindowIsExclusive(): void
+    {
+        $vOnce = $this->window('2026-11-08 02:00', '2026-11-08 04:00', MaintenanceRecurrence::None);
+        self::assertTrue($vOnce->isActive($this->paris('2026-11-08 02:00'), $this->aParis));
+        self::assertFalse($vOnce->isActive($this->paris('2026-11-08 04:00'), $this->aParis));
+
+        $vWeekly = $this->window('2026-11-08 02:00', '2026-11-08 04:00', MaintenanceRecurrence::Weekly);
+        self::assertEquals($this->paris('2026-11-15 02:00'), $vWeekly->findOccurrenceStart($this->paris('2026-11-08 04:00'), $this->aParis));
+    }
+
     private function window(string $pStart, string $pEnd, MaintenanceRecurrence $pRecurrence): MaintenanceWindow
     {
         $rWindow = new MaintenanceWindow(null, $this->paris($pStart), $this->paris($pEnd), 'Mise à jour', $pRecurrence);
@@ -74,5 +100,20 @@ class MaintenanceWindowTest extends TestCase
         $rDate = (new \DateTimeImmutable($pDate, $this->aParis))->setTimezone(new \DateTimeZone('UTC'));
 
         return $rDate;
+    }
+
+    public function testLongWindowKeepsTheCurrentOccurrenceStart(): void
+    {
+        $vWindow = $this->window('2026-11-01 00:00', '2026-11-02 12:00', MaintenanceRecurrence::Daily);
+
+        self::assertEquals($this->paris('2026-11-05 00:00'), $vWindow->findOccurrenceStart($this->paris('2026-11-05 00:00'), $this->aParis));
+        self::assertEquals($this->paris('2026-11-05 00:00'), $vWindow->findOccurrenceStart($this->paris('2026-11-05 06:00'), $this->aParis));
+    }
+
+    public function testOccurrenceEndingExactlyNowIsOver(): void
+    {
+        $vWindow = $this->window('2026-11-01 23:00', '2026-11-02 02:00', MaintenanceRecurrence::Daily);
+
+        self::assertEquals($this->paris('2026-11-07 23:00'), $vWindow->findOccurrenceStart($this->paris('2026-11-07 02:00'), $this->aParis));
     }
 }
