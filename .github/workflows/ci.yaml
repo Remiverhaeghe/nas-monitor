@@ -100,6 +100,7 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
+          # Seuil plus bas que le run complet : sur quelques dizaines de mutants, un seul équivalent pèse plusieurs points
           docker compose exec -T php git config --global --add safe.directory /app
           docker compose exec -T php vendor/bin/infection --coverage=var/coverage --skip-initial-tests --threads=1 --no-progress --show-mutations=0 \
-            --git-diff-lines --git-diff-base="origin/$BASE_REF"
+            --git-diff-lines --git-diff-base="origin/$BASE_REF" --min-msi=85 --min-covered-msi=85

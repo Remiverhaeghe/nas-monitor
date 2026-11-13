@@ -51,4 +51,17 @@ class TrendChartFactoryTest extends TestCase
         self::assertNull($vFactory->durations($vPings));
         self::assertSame([], $vFactory->metrics($vPings));
     }
+
+    public function testDurationsAreInSecondsAndSizesInMegabytes(): void
+    {
+        $vFactory = new TrendChartFactory('Europe/Paris');
+
+        $vDurations = $vFactory->durations($this->pings());
+        $vSizes = $vFactory->sizes($this->pings());
+
+        self::assertNotNull($vDurations);
+        self::assertNotNull($vSizes);
+        self::assertSame(3.0, $vDurations->maxValue);
+        self::assertSame(3.0, $vSizes->maxValue);
+    }
 }

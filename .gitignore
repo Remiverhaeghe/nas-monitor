@@ -34,3 +34,9 @@ phpstan.neon
 ###< phpstan/phpstan ###
 /.env.nas
 clover.xml
+/C:
+
+# Sorties locales de outils (ne pas commiter)
+/infection-*.txt
+/infection.log
+/*.log
