@@ -62,4 +62,18 @@ class TlsConnectorTest extends TestCase
         $this->expectException(\RuntimeException::class);
         (new StreamTlsConnector())->connect($vHost, $vPort, 2);
     }
+
+    public function testPeerIsVerifiedAndItsCertificateCaptured(): void
+    {
+        self::assertSame(
+            ['ssl' => [
+                'capture_peer_cert' => true,
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+                'peer_name' => 'nas.exemple.fr',
+                'SNI_enabled' => true,
+            ]],
+            StreamTlsConnector::contextOptions('nas.exemple.fr'),
+        );
+    }
 }
