@@ -22,6 +22,7 @@ final class ActiveChecker
         private readonly int $aTlsWarningDays,
         private readonly PingTransport $aPingTransport = new SocketPingTransport(),
         private readonly TlsConnector $aTlsConnector = new StreamTlsConnector(),
+        private readonly DnsResolver $aDnsResolver = new NativeDnsResolver(),
     ) {
     }
 
@@ -140,7 +141,7 @@ final class ActiveChecker
     private function checkDns(string $pTarget): array
     {
         $vHost = explode('=', $pTarget, 2)[0];
-        $rResult = self::evaluateDns($pTarget, self::extractAddresses(@dns_get_record($vHost, \DNS_A | \DNS_AAAA) ?: []));
+        $rResult = self::evaluateDns($pTarget, self::extractAddresses($this->aDnsResolver->lookup($vHost)));
 
         return $rResult;
     }
@@ -195,7 +196,6 @@ final class ActiveChecker
             return [false, 'Nom introuvable : '.$pHost];
         }
 
-        $vSocket = @socket_create(\AF_INET, \SOCK_DGRAM, 1);
         try {
             $vReply = $this->aPingTransport->echo($vAddress, self::buildEchoRequest(random_int(1, 0xFFFF)), self::ICMP_TIMEOUT_SECONDS);
         } catch (\RuntimeException $vException) {
