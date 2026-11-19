@@ -87,6 +87,23 @@ class PingControllerTest extends WebTestCase
         self::assertSame(['disk_used_percent' => 82.0, 'temperature_c' => 44.5], $vPing?->getMetrics());
     }
 
+    public function testSmartOutputsAreValidatedAndTurnedIntoMetrics(): void
+    {
+        [, $vToken] = $this->createMonitor();
+        $vOutput = (string) file_get_contents(__DIR__.'/../Smart/fixtures/sata-sain.txt');
+
+        foreach ([['/dev/sda' => $vOutput], ['sda' => 42], ['sda' => str_repeat('x', 20001)], array_fill_keys(range('a', 'q'), $vOutput)] as $vInvalid) {
+            $this->aClient->jsonRequest('POST', '/ping/'.$vToken, ['smart' => $vInvalid]);
+            self::assertResponseStatusCodeSame(422);
+        }
+
+        $this->aClient->jsonRequest('POST', '/ping/'.$vToken, ['smart' => ['sda' => $vOutput, 'sdb' => str_repeat('x', 20000)]]);
+        self::assertResponseIsSuccessful();
+
+        $vPing = $this->getEntityManager()->getRepository(Ping::class)->findOneBy([]);
+        self::assertSame(37.0, $vPing?->getMetrics()['disk_temperature_max_c'] ?? null);
+    }
+
     public function testGetIsNotAllowed(): void
     {
         [, $vToken] = $this->createMonitor();

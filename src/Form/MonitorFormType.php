@@ -74,6 +74,7 @@ final class MonitorFormType extends AbstractType
             ->add('publicVisible', CheckboxType::class, [
                 'label' => 'Visible sur la page de statut publique',
                 'required' => false,
+                'help' => 'Seuls le nom, le statut et la disponibilité y paraissent ; adresses, chemins et versions du nom sont masqués.',
             ])
             ->add('metricLimits', TextType::class, [
                 'label' => 'Seuils des métriques',

@@ -2,6 +2,18 @@
 
 ## Non publié
 
+### Santé des disques (SMART)
+- Le script de relevé du NAS joint la sortie de `smartctl -H -A` de chaque disque (SATA, NVMe, SAS), sans réveiller un disque en veille
+- nas-monitor en tire la température la plus haute des disques, les secteurs réalloués, en attente et illisibles, les erreurs et l'usure NVMe, et le nombre de disques en échec
+- Alerte « Anomalie » avant panne, qui nomme le disque concerné ; seuils indicatifs par défaut (50 °C, aucun secteur défectueux, usure 90 %), remplacés par ceux du moniteur
+- Tests sur des sorties smartctl fictives
+
+### Page d'état publique
+- Les noms de services et de groupes y sont affichés sans adresse IP, nom d'hôte, port, chemin ni numéro de version
+- Le gabarit ne reçoit plus les moniteurs eux-mêmes, seulement le nom masqué, le statut et la disponibilité
+- Colonnes resserrées et noms sur plusieurs lignes sur téléphone
+
+
 ### Tests
 - Tests de mutation : valeurs exactes pour les courbes, les contrôles actifs, le détecteur d'anomalies et les plages de maintenance (indice 81 % → 86 %), délai par mutant porté à 10 s
 - Tests des journaux, de l'ordre de traitement et des alertes (PingRecorder, MonitorChecker, ActiveCheckRunner, IncidentReminder, jetons d'API) avec un logger de test

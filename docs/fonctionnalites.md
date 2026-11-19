@@ -85,7 +85,7 @@ Le ping reste un succès et le statut ne change pas, mais l'anomalie est enregis
 - **Connexion** : adresse e-mail et mot de passe, cinq tentatives par quart d'heure, puis code TOTP ou code de secours si la double authentification est activée
 - **Maintenances** : plages en cours et à venir, planification et suppression
 - **Journal** : 200 dernières actions avec date, auteur, détail et adresse IP
-- **Statut public** (`/status`, sans connexion) : moniteurs marqués visibles, avec statut et disponibilité sur 30 jours, sans cible ni message ; actualisation chaque minute
+- **Statut public** (`/status`, sans connexion) : moniteurs marqués visibles, avec statut et disponibilité sur 30 jours, sans cible ni message, noms débarrassés des adresses, chemins et versions ; actualisation chaque minute, lisible sur téléphone
 - **Tableau de bord** : nombre de moniteurs par statut, moniteurs par groupe triés par gravité, début de l'incident en cours, disponibilité sur 7 jours
 - **Moniteur** : configuration, courbes de durée et de taille des 50 derniers succès, 20 derniers incidents, 50 derniers pings
 - **Création et modification** : nom, type (non modifiable ensuite), cible, groupe, intervalle et délai de grâce en minutes, canal d'alerte

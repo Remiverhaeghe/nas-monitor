@@ -9,6 +9,9 @@ use App\Enum\PingKind;
 use App\Metric\MetricLimits;
 use App\Notification\AlertNotifier;
 use App\Repository\PingRepository;
+use App\Smart\SmartDiskReport;
+use App\Smart\SmartHealth;
+use App\Smart\SmartOutputParser;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -40,9 +43,10 @@ final class PingRecorder
             $pPayload?->message,
             $pSourceIp,
         );
-        $rPing->setMetrics($pPayload?->normalizedMetrics());
+        $vReports = array_map(SmartOutputParser::parse(...), $pPayload?->normalizedSmart() ?? []);
+        $rPing->setMetrics($this->withSmartMetrics($pPayload?->normalizedMetrics(), $vReports));
         if (PingKind::Success === $pKind && !$pMonitor->getType()->isActive()) {
-            $this->checkAnomaly($pMonitor, $rPing);
+            $this->checkAnomaly($pMonitor, $rPing, $vReports);
         }
         $vChanged = $pMonitor->recordPing($pKind, $vNow);
         $this->aEntityManager->persist($rPing);
@@ -66,15 +70,37 @@ final class PingRecorder
     }
 
     /**
-     * Anomalie : résultat éloigné des exécutions précédentes, ou métrique au-delà de son seuil.
-     * L'alerte n'est envoyée qu'au début d'une série d'anomalies, pas à chaque exécution anormale.
+     * Quand les sorties de smartctl sont jointes, les métriques SMART en sont tirées et remplacent celles du relevé.
+     *
+     * @param array<string, float>|null      $pMetrics
+     * @param array<string, SmartDiskReport> $pReports
+     *
+     * @return array<string, float>|null
      */
-    private function checkAnomaly(Monitor $pMonitor, Ping $pPing): void
+    private function withSmartMetrics(?array $pMetrics, array $pReports): ?array
+    {
+        if ([] === $pReports) {
+            return $pMetrics;
+        }
+        $rMetrics = self::withoutSmart($pMetrics ?? []) + SmartHealth::metrics($pReports);
+
+        return $rMetrics;
+    }
+
+    /**
+     * Anomalie : résultat éloigné des exécutions précédentes, métrique au-delà de son seuil, ou disque qui annonce une panne.
+     * L'alerte n'est envoyée qu'au début d'une série d'anomalies, pas à chaque exécution anormale.
+     *
+     * @param array<string, SmartDiskReport> $pReports
+     */
+    private function checkAnomaly(Monitor $pMonitor, Ping $pPing, array $pReports): void
     {
         $vHistory = $this->aPingRepository->findRecentSuccessesForMonitor($pMonitor, AnomalyDetector::HISTORY_SIZE);
+        $vLimits = $pMonitor->getMetricLimits();
         $vFindings = array_filter([
             $this->aAnomalyDetector->detect($pPing, $vHistory),
-            ...MetricLimits::findExceeded($pPing->getMetrics() ?? [], $pMonitor->getMetricLimits()),
+            ...MetricLimits::findExceeded($pPing->getMetrics() ?? [], [] === $pReports ? $vLimits : self::withoutSmart($vLimits)),
+            ...SmartHealth::findExceeded($pReports, $vLimits),
         ]);
         if ([] === $vFindings) {
             return;
@@ -91,5 +117,17 @@ final class PingRecorder
         if (null === $vPrevious?->getAnomaly()) {
             $this->aAlertNotifier->sendAnomaly($pMonitor, $vAnomaly, $pPing->getReceivedAt());
         }
+    }
+
+    /**
+     * @param array<string, float> $pValues
+     *
+     * @return array<string, float>
+     */
+    private static function withoutSmart(array $pValues): array
+    {
+        $rValues = array_filter($pValues, static fn (string $pName): bool => !SmartHealth::isSmartMetric($pName), \ARRAY_FILTER_USE_KEY);
+
+        return $rValues;
     }
 }

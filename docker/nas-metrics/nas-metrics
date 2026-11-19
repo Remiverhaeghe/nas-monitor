@@ -18,18 +18,26 @@ add_metric memory_used_percent "$(awk '/^MemTotal:/ { t = $2 } /^MemAvailable:/ 
 add_metric load_1m "$(cut -d ' ' -f 1 /proc/loadavg)"
 add_metric temperature_c "$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | sort -n | tail -n 1 | awk '{ printf "%.1f", $1 / 1000 }')"
 
+# Échappement JSON d'une sortie texte : sed est le seul outil dont le traitement des barres obliques inverses
+# ne varie pas d'une version à l'autre ; awk ne fait que joindre les lignes par \n
+json_string() {
+    tr -d '\r' | tr '\t' ' ' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk 'BEGIN { ORS = "" } { if (NR > 1) print "\\n"; print }'
+}
+
+# Sortie de smartctl de chaque disque, analysée par nas-monitor (température, secteurs défectueux, usure).
+# « -n standby » laisse dormir un disque en veille : il n'est alors pas relevé.
+vSmart=""
 if command -v smartctl > /dev/null 2>&1; then
-    vFailed=0
-    for vDisk in /dev/sd? /dev/nvme?n1; do
+    for vDisk in /dev/sd? /dev/sata? /dev/nvme?n1; do
         [ -e "$vDisk" ] || continue
-        smartctl -H "$vDisk" 2>/dev/null | grep -q -E 'PASSED|OK' || vFailed=$((vFailed + 1))
+        vOutput=$(smartctl -n standby -H -A "$vDisk" 2>/dev/null | head -c 20000 | json_string)
+        vSmart="${vSmart:+$vSmart,}\"$(basename "$vDisk")\":\"$vOutput\""
     done
-    add_metric smart_failed_disks "$vFailed"
 fi
 
-vPayload=$(printf '{"message":"Relevé de %s","metrics":{%s}}' "$vVolume" "$vMetrics")
+vPayload=$(printf '{"message":"Relevé de %s","metrics":{%s},"smart":{%s}}' "$vVolume" "$vMetrics" "$vSmart")
 if ! curl -fsS -m 10 --retry 3 -X POST -H 'Content-Type: application/json' -d "$vPayload" "$NAS_METRICS_PING_URL" > /dev/null; then
     echo "Envoi du relevé impossible" >&2
     exit 1
 fi
-echo "$vPayload"
+printf '%s\n' "$vPayload"
