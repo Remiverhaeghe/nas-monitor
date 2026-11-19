@@ -35,4 +35,31 @@ class StatusControllerTest extends WebTestCase
         self::assertSelectorTextContains('.status-summary', 'Tous les services fonctionnent.');
         self::assertSelectorNotExists('header');
     }
+
+    public function testPublicPageRevealsNoAddressPathOrVersion(): void
+    {
+        $vClient = static::createClient();
+        $vEntityManager = static::getContainer()->get(EntityManagerInterface::class);
+        foreach ([Incident::class, Ping::class, Monitor::class] as $vEntityClass) {
+            $vEntityManager->createQuery('DELETE FROM '.$vEntityClass)->execute();
+        }
+        $vMonitor = new Monitor('Gitea 1.22.3 sur 192.168.1.10:3000', MonitorType::Http, 300, 60, new \DateTimeImmutable('-1 day'));
+        $vMonitor->setTarget('http://192.168.1.10:3000/api/healthz');
+        $vMonitor->setGroupName('NAS /volume1');
+        $vMonitor->setPublicVisible(true);
+        $vEntityManager->persist($vMonitor);
+        $vEntityManager->flush();
+
+        $vClient->request('GET', '/status');
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextSame('tbody td.wrap', 'Gitea … sur …');
+        self::assertSelectorTextSame('.group-row th', 'NAS …');
+        $vResponse = $vClient->getResponse();
+        $vContent = (string) $vResponse->getContent();
+        foreach (['192.168', '1.22.3', '/volume1', 'healthz'] as $vSensitive) {
+            self::assertStringNotContainsString($vSensitive, $vContent);
+        }
+        self::assertFalse($vResponse->headers->has('X-Powered-By'));
+    }
 }

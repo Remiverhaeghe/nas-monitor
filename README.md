@@ -4,7 +4,7 @@
 
 Supervision des sauvegardes et des tâches planifiées d'un NAS auto-hébergé.
 
-Chaque tâche signale son exécution par un appel HTTP. L'application contrôle aussi elle-même des sites web, des ports TCP, des certificats TLS, la résolution DNS et la réponse au ping. Une page de statut publique, facultative, montre l'état des services choisis. Si un signal manque dans le délai prévu ou si un contrôle échoue, un incident est ouvert et une alerte est envoyée par e-mail ou par ntfy.
+Chaque tâche signale son exécution par un appel HTTP. L'application contrôle aussi elle-même des sites web, des ports TCP, des certificats TLS, la résolution DNS et la réponse au ping. Le relevé du NAS suit la température et l'état SMART des disques pour alerter avant une panne. Une page de statut publique, facultative, montre l'état des services choisis. Si un signal manque dans le délai prévu ou si un contrôle échoue, un incident est ouvert et une alerte est envoyée par e-mail ou par ntfy.
 
 Stack : PHP 8.5, Symfony 8, PostgreSQL 16, FrankenPHP, Docker Compose. Basé sur [dunglas/symfony-docker](https://github.com/dunglas/symfony-docker).
 

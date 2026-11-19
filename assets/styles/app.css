@@ -389,3 +389,11 @@ button {
     border: 1px solid var(--down);
     border-radius: 6px;
 }
+
+/* Page publique lue surtout sur téléphone : colonnes resserrées pour éviter le défilement horizontal */
+@media (max-width: 480px) {
+    .status-table th,
+    .status-table td {
+        padding: 8px;
+    }
+}

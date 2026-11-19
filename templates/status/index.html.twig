@@ -14,7 +14,7 @@
             {{ down_count > 0 ? (down_count == 1 ? 'Un service est en panne.' : down_count ~ ' services sont en panne.') : 'Tous les services fonctionnent.' }}
         </p>
 
-        <div class="table-wrap">
+        <div class="table-wrap status-table">
             <table>
                 <thead>
                     <tr>
@@ -30,12 +30,11 @@
                             <th colspan="3" scope="rowgroup">{{ group.name ?? 'Autres services' }}</th>
                         </tr>
                     {% endif %}
-                    {% for monitor in group.monitors %}
-                        {% set monitor_availability = availability[monitor.id] ?? null %}
+                    {% for service in group.services %}
                         <tr>
-                            <td>{{ monitor.name }}</td>
-                            <td>{{ include('_status.html.twig', {status: monitor.status}) }}</td>
-                            <td>{{ monitor_availability is null ? '-' : monitor_availability|number_format(2, ',', ' ') ~ ' %' }}</td>
+                            <td class="wrap">{{ service.name }}</td>
+                            <td>{{ include('_status.html.twig', {status: service.status}) }}</td>
+                            <td>{{ service.availability is null ? '-' : service.availability|number_format(2, ',', ' ') ~ ' %' }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

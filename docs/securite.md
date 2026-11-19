@@ -13,6 +13,7 @@
 - [x] Méthode `POST` uniquement
 - [x] Limite de 60 requêtes par minute et par adresse IP, vérifiée avant la recherche du jeton
 - [x] Corps JSON validé, valeurs négatives refusées, message tronqué à 500 caractères, 20 métriques numériques au plus aux noms contrôlés
+- [x] Sorties de smartctl limitées à 16 disques aux noms contrôlés et à 20 000 caractères chacune, analysées sans être stockées
 - [x] Pare-feu sans session
 
 ## API
@@ -25,6 +26,8 @@
 
 - [x] Toutes les pages sauf `/login` et `/status` exigent une connexion
 - [x] Page de statut publique limitée aux moniteurs marqués visibles : ni cible, ni message, ni historique
+- [x] Sur cette page, adresses IP, noms d'hôte, ports, chemins, URL et numéros de version sont masqués dans les noms de services et de groupes ; le gabarit ne reçoit que le nom masqué, le statut et la disponibilité
+- [x] Page publique sans barre de navigation ni nom d'utilisateur, en cache public de 30 secondes
 - [x] Mots de passe hachés par l'algorithme `auto` de Symfony, rehachés à la connexion si besoin
 - [x] Cinq tentatives de connexion par quart d'heure
 - [x] Double authentification par code TOTP (scheb/2fa), activée par compte, avec confirmation d'un code avant activation
