@@ -53,3 +53,19 @@ La dépendance n'a qu'un niveau : un moniteur dont d'autres dépendent ne peut p
 
 - **Ping ICMP** : requête d'écho vers un hôte ou une adresse IPv4, réponse attendue en 3 secondes. Le conteneur n'a pas besoin de droits root : Docker autorise par défaut les sockets ICMP non privilégiées
 - **Résolution DNS** : vérifie qu'un nom résout, et optionnellement vers l'adresse attendue (`nas.exemple.fr=192.168.1.10`). La résolution passe par le DNS du conteneur ; les noms `.local` (mDNS) ne sont pas résolus
+
+## Sites publiés sur GitHub Pages
+
+Les versions web d'Atelier et de Tremplin se surveillent avec un moniteur « Site web (HTTP) » chacun, créé depuis l'interface :
+
+| Nom | Cible | Intervalle | Grâce |
+|---|---|---|---|
+| Atelier (web) | `https://remiverhaeghe.github.io/atelier/` | 1 h | 1 h |
+| Tremplin (web) | `https://remiverhaeghe.github.io/tremplin/` | 1 h | 1 h |
+
+Garder la barre oblique finale : sans elle, GitHub répond par une redirection, suivie mais comptée dans le temps de réponse. Un site dont Pages n'est pas activé, ou dont le dépôt est passé en privé, répond 404 et passe en panne.
+
+Ces moniteurs ne dépendent pas du NAS : un site GitHub reste joignable quand le NAS ne l'est pas, mais une coupure de la box les ferait tomber en même temps que le reste. Les faire dépendre du moniteur de la box, s'il existe, évite les alertes en double.
+
+Le contrôle dit seulement que le site répond. Qu'il soit à jour, c'est-à-dire publié après le dernier commit, est vérifié chaque matin par la veille des projets.
+
