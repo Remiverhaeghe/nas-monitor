@@ -91,6 +91,10 @@ jobs:
         run: |
           docker compose exec -T php bin/console cache:warmup --env=dev
           docker compose exec -T php vendor/bin/phpstan analyse --no-progress
+      - name: Restore check script
+        run: |
+          docker compose cp docker/db-backup/check-restore database:/tmp/check-restore
+          docker compose exec -T -e PGUSER=app database sh -s < tests/Shell/check-restore-test.sh
       - name: Create test database
         run: docker compose exec -T php bin/console -e test doctrine:database:create
       - name: Run migrations

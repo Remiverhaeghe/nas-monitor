@@ -1,0 +1,32 @@
+#!/bin/sh
+# Restaure le dernier dump dans une base temporaire et compare le nombre de tables avec la base réelle
+set -u
+
+vDir="${BACKUP_DIR:-/backups}"
+vDump=$(ls -1t "$vDir"/nas-monitor-*.dump 2> /dev/null | head -n 1)
+[ -z "$vDump" ] && { echo "Aucun dump à vérifier" >&2; exit 2; }
+vScratch="restore_check_$$"
+
+nb_tables() {
+    psql -tA -d "$1" -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'"
+}
+
+vError=""
+if ! createdb "$vScratch" 2> /tmp/restore.err; then
+    vError="création de la base temporaire impossible"
+elif ! pg_restore --no-owner --exit-on-error -d "$vScratch" "$vDump" 2> /tmp/restore.err; then
+    vError="pg_restore en échec"
+else
+    vExpected=$(nb_tables "$PGDATABASE")
+    vRestored=$(nb_tables "$vScratch")
+    if [ -z "$vRestored" ] || [ "$vRestored" -eq 0 ] || [ "$vRestored" != "$vExpected" ]; then
+        vError="tables restaurées : ${vRestored:-0}, attendues : ${vExpected:-?}"
+    fi
+fi
+dropdb --if-exists "$vScratch" 2> /dev/null
+
+if [ -n "$vError" ]; then
+    echo "Restauration en échec ($(basename "$vDump")) : $vError $(tail -c 200 /tmp/restore.err | tr -d '"\\\r' | tr '\n' ' ')" >&2
+    exit 1
+fi
+echo "Restauration vérifiée : $(basename "$vDump"), $vRestored tables"

@@ -8,6 +8,24 @@ ping_monitor() {
         || echo "Ping $1 impossible" >&2
 }
 
+# Vérifie la restauration tous les DB_RESTORE_CHECK_EVERY dumps (0 : jamais) et signale le résultat
+restore_check() {
+    [ "${DB_RESTORE_CHECK_EVERY:-0}" -le 0 ] && return 0
+    vCount=$(cat /backups/.restore-count 2> /dev/null || echo 0)
+    vCount=$((vCount + 1))
+    echo "$vCount" > /backups/.restore-count
+    [ $((vCount % DB_RESTORE_CHECK_EVERY)) -ne 0 ] && return 0
+    vUrl="${DB_RESTORE_PING_URL:-}"
+    [ -n "$vUrl" ] && wget -q -O /dev/null -T 10 --post-data '{}' "$vUrl/start" 2> /dev/null
+    if vResult=$(sh /scripts/check-restore 2>&1); then
+        echo "$vResult"
+        [ -n "$vUrl" ] && wget -q -O /dev/null -T 10 --header 'Content-Type: application/json' --post-data "{\"message\":\"$(echo "$vResult" | tr -d '"\\')\"}" "$vUrl"
+    else
+        echo "$vResult" >&2
+        [ -n "$vUrl" ] && wget -q -O /dev/null -T 10 --header 'Content-Type: application/json' --post-data "{\"message\":\"$(echo "$vResult" | tr -d '"\\' | tr '\n' ' ')\"}" "$vUrl/fail"
+    fi
+}
+
 while true; do
     vStart=$(date +%s)
     vFile="/backups/nas-monitor-$(date -u +%Y%m%d-%H%M%S).dump"
@@ -19,6 +37,7 @@ while true; do
         ping_monitor '' "{\"duration_ms\":$vDurationMs,\"size_bytes\":$vSize,\"message\":\"$(basename "$vFile")\"}"
         echo "Sauvegarde terminée : $vFile ($vSize octets)"
         ls -1t /backups/nas-monitor-*.dump | tail -n +$((DB_BACKUP_KEEP + 1)) | xargs -r rm -f
+        restore_check
     else
         rm -f "$vFile.tmp"
         vMessage=$(tail -c 300 /tmp/pg_dump.err | tr -d '"\\\r' | tr '\n' ' ')

@@ -101,7 +101,7 @@ docker compose exec php bin/phpunit --group screenshots
 | `TOTP_ENCRYPTION_KEY` | Clé de chiffrement des secrets TOTP, 32 octets en base64, obligatoire en production : `php -r 'echo base64_encode(random_bytes(32)), PHP_EOL;'` |
 | `ANOMALY_SIZE_DROP_PERCENT`, `ANOMALY_DURATION_FACTOR` | Seuils de détection d'un résultat anormal (50 % et 3 par défaut) |
 | `ALERT_REMINDER_HOURS` | Rappel d'une panne toujours en cours (6 h par défaut, 0 pour désactiver) |
-| `DB_BACKUP_PING_URL`, `DB_BACKUP_INTERVAL_SECONDS`, `DB_BACKUP_KEEP` | Sauvegarde de la base en production, voir [docs/sauvegarde.md](docs/sauvegarde.md) |
+| `DB_BACKUP_PING_URL`, `DB_BACKUP_INTERVAL_SECONDS`, `DB_BACKUP_KEEP`, `DB_RESTORE_CHECK_EVERY`, `DB_RESTORE_PING_URL` | Sauvegarde de la base en production, voir [docs/sauvegarde.md](docs/sauvegarde.md) |
 | `DATABASE_URL` | Connexion PostgreSQL, fournie par `compose.yaml` |
 | `CADDY_MERCURE_JWT_SECRET`, `CADDY_MERCURE_PUBLIC_URL` | Clé des jetons Mercure (obligatoire en production) et URL publique du hub si elle diffère de `https://<SERVER_NAME>:<HTTPS_PORT>` |
 
