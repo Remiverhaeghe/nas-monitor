@@ -31,15 +31,22 @@ while true; do
     vFile="/backups/nas-monitor-$(date -u +%Y%m%d-%H%M%S).dump"
     ping_monitor /start '{}'
 
+    # Nombre de lignes par table juste avant le dump : le test de restauration le compare
+    sh /scripts/row-counts > "${vFile%.dump}.counts" 2> /dev/null || rm -f "${vFile%.dump}.counts"
+
     if pg_dump --format=custom --file="$vFile.tmp" 2> /tmp/pg_dump.err && mv "$vFile.tmp" "$vFile"; then
         vSize=$(wc -c < "$vFile" | tr -d ' ')
         vDurationMs=$(( ($(date +%s) - vStart) * 1000 ))
         ping_monitor '' "{\"duration_ms\":$vDurationMs,\"size_bytes\":$vSize,\"message\":\"$(basename "$vFile")\"}"
         echo "Sauvegarde terminée : $vFile ($vSize octets)"
         ls -1t /backups/nas-monitor-*.dump | tail -n +$((DB_BACKUP_KEEP + 1)) | xargs -r rm -f
+        # Les fichiers de comptage sans dump correspondant sont supprimés avec les anciens dumps
+        for vCounts in /backups/nas-monitor-*.counts; do
+            [ -e "${vCounts%.counts}.dump" ] || rm -f "$vCounts"
+        done
         restore_check
     else
-        rm -f "$vFile.tmp"
+        rm -f "$vFile.tmp" "${vFile%.dump}.counts"
         vMessage=$(tail -c 300 /tmp/pg_dump.err | tr -d '"\\\r' | tr '\n' ' ')
         ping_monitor /fail "{\"message\":\"pg_dump en échec : $vMessage\"}"
         echo "Sauvegarde en échec : $vMessage" >&2
