@@ -2,6 +2,11 @@
 
 ## Non publié
 
+### PHP 8.5.13
+- Image FrankenPHP passée à PHP 8.5.13 (nouvelle empreinte dans le `Dockerfile`)
+- Le contrôle de version de la CI laisse une semaine à l'image FrankenPHP pour être reconstruite après une version de PHP ; il échoue tout de suite si l'image à jour existe déjà, et donne alors l'empreinte à mettre dans le `Dockerfile`
+- Dependabot propose chaque jour, sans délai d'attente, la mise à jour de l'image FrankenPHP
+
 ### Santé des disques (SMART)
 - Le script de relevé du NAS joint la sortie de `smartctl -H -A` de chaque disque (SATA, NVMe, SAS), sans réveiller un disque en veille
 - nas-monitor en tire la température la plus haute des disques, les secteurs réalloués, en attente et illisibles, les erreurs et l'usure NVMe, et le nombre de disques en échec
