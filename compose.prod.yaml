@@ -91,6 +91,7 @@ services:
     volumes:
       - ./docker/db-backup/backup-db:/scripts/backup-db:ro
       - ./docker/db-backup/check-restore:/scripts/check-restore:ro
+      - ./docker/db-backup/row-counts:/scripts/row-counts:ro
       - db_backups:/backups
 
 volumes:

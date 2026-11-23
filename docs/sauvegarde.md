@@ -21,6 +21,10 @@ Un dump qui ne se restaure pas ne sert à rien, et on ne le découvre qu'au pire
 
 Pour être alerté, créer un second moniteur (« Restauration base nas-monitor », intervalle 10 080 minutes pour un contrôle hebdomadaire, délai de grâce 60 minutes) et renseigner `DB_RESTORE_PING_URL=http://php/ping/<jeton>`. Un échec envoie un ping d'échec avec la cause ; l'absence de ping déclenche l'alerte habituelle. Sans URL, le résultat reste dans les journaux du service.
 
+Chaque dump est accompagné d'un fichier `.counts` : le nombre de lignes de chaque table, relevé juste avant le `pg_dump` (`row-counts`). Au contrôle, chaque table restaurée est comparée à ce relevé : une table absente, ou qui a perdu plus de 10 % de ses lignes, fait échouer le contrôle et le message nomme les tables. Les 10 % de tolérance absorbent les purges et les écritures entre le relevé et le dump. Un dump sans `.counts` (anciennes sauvegardes) est seulement contrôlé sur le nombre de tables.
+
+Si le moniteur de restauration ne reçoit aucun ping pendant sa période (une semaine) plus son délai de grâce, l'alerte habituelle des moniteurs de battement part : le silence d'un contrôle qui ne tourne plus est donc signalé comme un échec.
+
 Le script est testé en CI sur une base jetable (`tests/Shell/check-restore-test.sh`).
 
 ## Lister les sauvegardes

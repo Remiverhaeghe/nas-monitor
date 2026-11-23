@@ -94,6 +94,7 @@ jobs:
       - name: Restore check script
         run: |
           docker compose cp docker/db-backup/check-restore database:/tmp/check-restore
+          docker compose cp docker/db-backup/row-counts database:/tmp/row-counts
           docker compose exec -T -e PGUSER=app database sh -s < tests/Shell/check-restore-test.sh
       - name: Create test database
         run: docker compose exec -T php bin/console -e test doctrine:database:create

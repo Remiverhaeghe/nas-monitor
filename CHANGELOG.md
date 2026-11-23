@@ -3,6 +3,7 @@
 ## Non publié
 
 ### Vérification de restauration
+- Comparaison du nombre de lignes de chaque table restaurée avec le relevé pris avant le dump (`row-counts`, fichier `.counts`), tolérance de 10 %
 - `docker/db-backup/check-restore` restaure le dernier dump dans une base temporaire, compare le nombre de tables avec la base réelle et supprime la base temporaire
 - `db-backup` le lance tous les `DB_RESTORE_CHECK_EVERY` dumps (7 par défaut) et signale le résultat à un moniteur dédié (`DB_RESTORE_PING_URL`)
 - Test du script en CI sur une base jetable : cas nominal, table ajoutée, dump illisible, aucun dump
