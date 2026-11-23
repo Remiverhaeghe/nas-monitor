@@ -50,16 +50,34 @@ jobs:
         run: docker compose up --wait --no-build
       - name: Check HTTPS reachability
         run: curl -v --insecure --fail-with-body https://localhost/login
+      # L'image FrankenPHP est reconstruite quelques jours après chaque version de PHP :
+      # on échoue si elle est déjà disponible (empreinte du Dockerfile à mettre à jour),
+      # ou si la version publiée a plus d'une semaine.
       - name: PHP is on the latest patch release
         run: |
           vVersion=$(docker compose exec -T php php -r 'echo PHP_VERSION;')
           vBranch=$(echo "$vVersion" | cut -d. -f1,2)
-          vLatest=$(curl -fsS "https://www.php.net/releases/?json&version=$vBranch" | jq -r .version)
-          echo "PHP installé : $vVersion, dernière version $vBranch : $vLatest"
-          if [ "$vVersion" != "$vLatest" ]; then
-            echo "::error::PHP $vVersion n'est pas à jour, $vLatest est disponible"
+          vRelease=$(curl -fsS "https://www.php.net/releases/?json&version=$vBranch")
+          vLatest=$(jq -r .version <<< "$vRelease")
+          vDate=$(jq -r .date <<< "$vRelease")
+          vAge=$(( ( $(date +%s) - $(date -d "$vDate" +%s) ) / 86400 ))
+          echo "PHP installé : $vVersion, dernière version $vBranch : $vLatest du $vDate ($vAge jours)"
+          if [ "$vVersion" = "$vLatest" ]; then
+            exit 0
+          fi
+          vImage=$(sed -n 's#^FROM \(dunglas/frankenphp:[^@ ]*\)@.*#\1#p' Dockerfile | head -1)
+          vUpstream=$(docker run --rm --pull always "$vImage" php -r 'echo PHP_VERSION;')
+          vDigest=$(docker buildx imagetools inspect "$vImage" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "Image $vImage aujourd'hui : PHP $vUpstream, empreinte $vDigest"
+          if [ "$vUpstream" = "$vLatest" ]; then
+            echo "::error::PHP $vLatest est dans $vImage : passer l'empreinte du Dockerfile à $vDigest"
             exit 1
           fi
+          if [ "$vAge" -gt 7 ]; then
+            echo "::error::PHP $vLatest est sorti il y a $vAge jours et $vImage est toujours en $vUpstream"
+            exit 1
+          fi
+          echo "::warning::PHP $vLatest est sorti il y a $vAge jours ; $vImage n'est pas encore reconstruite ($vUpstream)"
       - name: Security audit of dependencies
         run: docker compose exec -T php composer audit
       - name: Lint Twig, YAML and container

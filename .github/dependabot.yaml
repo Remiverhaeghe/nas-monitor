@@ -1,13 +1,12 @@
 version: 2
 updates:
+  # Image FrankenPHP : correctifs de sécurité de PHP, proposés dès le lendemain
   - package-ecosystem: docker
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
     commit-message:
       prefix: "chore"
-    cooldown:
-      default-days: 7
 
   - package-ecosystem: docker
     directory: /simulation
