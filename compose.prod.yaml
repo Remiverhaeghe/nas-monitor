@@ -86,8 +86,11 @@ services:
       DB_BACKUP_INTERVAL_SECONDS: ${DB_BACKUP_INTERVAL_SECONDS:-86400}
       DB_BACKUP_KEEP: ${DB_BACKUP_KEEP:-14}
       DB_BACKUP_PING_URL: ${DB_BACKUP_PING_URL:-}
+      DB_RESTORE_CHECK_EVERY: ${DB_RESTORE_CHECK_EVERY:-7}
+      DB_RESTORE_PING_URL: ${DB_RESTORE_PING_URL:-}
     volumes:
       - ./docker/db-backup/backup-db:/scripts/backup-db:ro
+      - ./docker/db-backup/check-restore:/scripts/check-restore:ro
       - db_backups:/backups
 
 volumes:

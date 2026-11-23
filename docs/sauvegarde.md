@@ -15,6 +15,14 @@ DB_BACKUP_PING_URL=http://php/ping/<jeton>
 
 Chaque sauvegarde envoie un ping de début, puis un ping de succès avec la durée et la taille, ou un ping d'échec avec l'erreur de `pg_dump`. La détection des résultats anormaux s'applique : un fichier deux fois plus petit que d'habitude déclenche une alerte.
 
+## Vérification automatique de la restauration
+
+Un dump qui ne se restaure pas ne sert à rien, et on ne le découvre qu'au pire moment. Tous les `DB_RESTORE_CHECK_EVERY` dumps (7 par défaut, `0` pour désactiver), `db-backup` lance `docker/db-backup/check-restore` : le dernier dump est restauré dans une base temporaire, le nombre de tables publiques est comparé à celui de la base réelle, puis la base temporaire est supprimée. La base réelle n'est jamais modifiée.
+
+Pour être alerté, créer un second moniteur (« Restauration base nas-monitor », intervalle 10 080 minutes pour un contrôle hebdomadaire, délai de grâce 60 minutes) et renseigner `DB_RESTORE_PING_URL=http://php/ping/<jeton>`. Un échec envoie un ping d'échec avec la cause ; l'absence de ping déclenche l'alerte habituelle. Sans URL, le résultat reste dans les journaux du service.
+
+Le script est testé en CI sur une base jetable (`tests/Shell/check-restore-test.sh`).
+
 ## Lister les sauvegardes
 
 ```bash
