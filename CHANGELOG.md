@@ -2,6 +2,9 @@
 
 ## Non publié
 
+### Documentation
+- Surveillance des versions web d'Atelier et de Tremplin sur GitHub Pages : moniteurs HTTP à créer, réglages et limites (`docs/nas.md`)
+
 ### PHP 8.5.13
 - Image FrankenPHP passée à PHP 8.5.13 (nouvelle empreinte dans le `Dockerfile`)
 - Le contrôle de version de la CI laisse une semaine à l'image FrankenPHP pour être reconstruite après une version de PHP ; il échoue tout de suite si l'image à jour existe déjà, et donne alors l'empreinte à mettre dans le `Dockerfile`
