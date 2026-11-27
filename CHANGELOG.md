@@ -2,6 +2,9 @@
 
 ## Non publié
 
+### Dépendances
+- Correctifs de sécurité : Symfony 8.1.12 (framework-bundle, http-kernel, routing, mailer, serializer, sécurité, expression-language, doctrine-bridge), Twig 3.31.1 et otphp 11.5.1, qui faisaient échouer `composer audit` en CI
+
 ### Vérification de restauration
 - Comparaison du nombre de lignes de chaque table restaurée avec le relevé pris avant le dump (`row-counts`, fichier `.counts`), tolérance de 10 %
 - `docker/db-backup/check-restore` restaure le dernier dump dans une base temporaire, compare le nombre de tables avec la base réelle et supprime la base temporaire
